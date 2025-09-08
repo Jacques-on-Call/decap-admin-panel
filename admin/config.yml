@@ -1,7 +1,8 @@
 backend:
   name: github
-  repo: "Jacques-on-Call/StrategyContent"
+  repo: Jacques-on-Call/StrategyContent
   branch: main
+  auth_endpoint: https://auth.strategycontent.agency/auth
 
 media_folder: "public/images" # Media files will be stored in public/images
 public_folder: "/images" # The src attribute for uploaded media will begin with /images
