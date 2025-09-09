@@ -8,6 +8,18 @@
   <link href="/config.yml" type="text/yaml" rel="cms-config-url">
 </head>
 <body>
-  <script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js" data-cfasync="false"></script>
+  <script>
+(function () {
+  var m = (location.hash || "").match(/\baccess_token=([^&]+)/);
+  if (m) {
+    try {
+      localStorage.setItem("decap-cms:githubToken", decodeURIComponent(m[1]));
+    } catch (_) {}
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+})();
+</script>
+<script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js" data-cfasync="false"></script>
+
 </body>
 </html>
