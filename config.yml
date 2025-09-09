@@ -17,26 +17,29 @@ collections:
         file: "src/pages/index.astro"
         fields: &pages_fields
           - {label: "Layout", name: "layout", widget: "hidden", default: "../layouts/MainLayout.astro"}
-          - {label: "Title", name: "title", widget: "string"}
-          - {label: "Slug", name: "slug", widget: "string"}
-          - {label: "Description", name: "description", widget: "text"}
+          - {label: "Title", name: "title", widget: "string", hint: "The main H1 title of the page."}
+          - {label: "Slug", name: "slug", widget: "string", hint: "The part of the URL for this page (e.g., 'about-us'). Should be unique."}
+          - {label: "Description", name: "description", widget: "text", hint: "A short page summary used for search engine results."}
           - label: "Meta / SEO"
             name: "meta"
             widget: "object"
+            hint: "Settings for Search Engine Optimization to improve search ranking."
             collapsed: true
             fields:
-              - {label: "Meta Title", name: "title", widget: "string", required: false}
-              - {label: "Meta Description", name: "description", widget: "text", required: false}
-              - {label: "Canonical URL", name: "canonicalURL", widget: "string", required: false}
+              - {label: "Meta Title", name: "title", widget: "string", required: false, hint: "A custom title for the browser tab and search results. If empty, the main Title is used."}
+              - {label: "Meta Description", name: "description", widget: "text", required: false, hint: "A custom description for search results. If empty, the main Description is used."}
+              - {label: "Canonical URL", name: "canonicalURL", widget: "string", required: false, hint: "The one 'true' URL for this page if it exists elsewhere, to avoid duplicate content."}
           - label: "Schema.org (JSON-LD)"
             name: "schema"
             widget: "object"
+            hint: "Advanced structured data for search engines (e.g., for recipes, events). Helps with rich results."
             collapsed: true
             fields:
               - {label: "JSON-LD", name: "ldjson", widget: "code", default_language: "json", output_code_only: true, required: false}
           - label: "Page Sections"
             name: "sections"
             widget: "list"
+            hint: "Build the content of the page by adding, editing, and reordering different sections."
             types:
               - label: "Hero"
                 name: "hero"
@@ -123,9 +126,9 @@ collections:
     format: "frontmatter"
     fields:
       - {label: "Layout", name: "layout", widget: "hidden", default: "../../layouts/BlogPost.astro"}
-      - {label: "Title", name: "title", widget: "string"}
-      - {label: "Description", name: "description", widget: "text"}
-      - {label: "Author", name: "author", widget: "string"}
-      - {label: "Publication Date", name: "pubDate", widget: "datetime"}
-      - {label: "Hero Image", name: "heroImage", widget: "image"}
-      - {label: "Body", name: "body", widget: "markdown"}
+      - {label: "Title", name: "title", widget: "string", hint: "The main headline of the blog post."}
+      - {label: "Description", name: "description", widget: "text", hint: "A short summary of the post for search engines and social media previews."}
+      - {label: "Author", name: "author", widget: "string", hint: "The name of the person who wrote the article."}
+      - {label: "Publication Date", name: "pubDate", widget: "datetime", hint: "Set a date in the future to schedule the post."}
+      - {label: "Hero Image", name: "heroImage", widget: "image", hint: "The main image that appears at the top of the post."}
+      - {label: "Body", name: "body", widget: "markdown", hint: "The main content of the article, written in Markdown."}

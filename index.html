@@ -7,8 +7,15 @@
   <title>Content Manager</title>
   <link href="/config.yml" type="text/yaml" rel="cms-config-url">
   <style>
-    /* 1. Prevent horizontal scrolling on the whole page */
-    body {
+    /* 1. More robust horizontal scroll prevention */
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    /* Target the Decap root as well, as it's the main container */
+    #nc-root {
       overflow-x: hidden;
     }
 
