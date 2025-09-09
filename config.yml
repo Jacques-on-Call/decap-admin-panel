@@ -17,38 +17,43 @@ collections:
         file: "src/pages/index.astro"
         fields: &pages_fields
           - {label: "Layout", name: "layout", widget: "hidden", default: "../layouts/MainLayout.astro"}
-          - {label: "Title", name: "title", widget: "string"}
-          - {label: "Slug", name: "slug", widget: "string"}
-          - {label: "Description", name: "description", widget: "text"}
+          - {label: "Title", name: "title", widget: "string", hint: "The main H1 title of the page."}
+          - {label: "Slug", name: "slug", widget: "string", hint: "The part of the URL for this page (e.g., 'about-us'). Should be unique."}
+          - {label: "Description", name: "description", widget: "text", hint: "A short page summary used for search engine results."}
           - label: "Meta / SEO"
             name: "meta"
             widget: "object"
+            hint: "Settings for Search Engine Optimization to improve search ranking."
             collapsed: true
             fields:
-              - {label: "Meta Title", name: "title", widget: "string", required: false}
-              - {label: "Meta Description", name: "description", widget: "text", required: false}
-              - {label: "Canonical URL", name: "canonicalURL", widget: "string", required: false}
+              - {label: "Meta Title", name: "title", widget: "string", required: false, hint: "A custom title for the browser tab and search results. If empty, the main Title is used."}
+              - {label: "Meta Description", name: "description", widget: "text", required: false, hint: "A custom description for search results. If empty, the main Description is used."}
+              - {label: "Canonical URL", name: "canonicalURL", widget: "string", required: false, hint: "The one 'true' URL for this page if it exists elsewhere, to avoid duplicate content."}
           - label: "Schema.org (JSON-LD)"
             name: "schema"
             widget: "object"
+            hint: "Advanced structured data for search engines (e.g., for recipes, events). Helps with rich results."
             collapsed: true
             fields:
               - {label: "JSON-LD", name: "ldjson", widget: "code", default_language: "json", output_code_only: true, required: false}
           - label: "Page Sections"
             name: "sections"
             widget: "list"
+            hint: "Build the content of the page by adding, editing, and reordering different sections."
             types:
               - label: "Hero"
                 name: "hero"
                 widget: "object"
+                hint: "A large, visually prominent section, usually at the top of the page."
                 fields:
-                  - {label: "Title", name: "title", widget: "string"}
-                  - {label: "Subtitle", name: "subtitle", widget: "string", required: false}
-                  - {label: "Image", name: "image", widget: "image", required: false}
+                  - {label: "Title", name: "title", widget: "string", hint: "The main headline for the hero section."}
+                  - {label: "Subtitle", name: "subtitle", widget: "string", required: false, hint: "A smaller line of text under the main headline."}
+                  - {label: "Image", name: "image", widget: "image", required: false, hint: "A background image for the hero section."}
                   - label: "Theme"
                     name: "theme"
                     widget: "select"
                     options: ["light", "dark", "accent"]
+                    hint: "Adjusts the color scheme of the text and buttons."
                   - label: "Buttons"
                     name: "buttons"
                     widget: "list"
@@ -63,8 +68,9 @@ collections:
               - label: "Text Block"
                 name: "text_block"
                 widget: "object"
+                hint: "A simple block of text content, formatted with Markdown."
                 fields:
-                  - {label: "Content", name: "content", widget: "markdown"}
+                  - {label: "Content", name: "content", widget: "markdown", hint: "The main text content. Use Markdown for formatting (e.g., # for headings, ** for bold)."}
                   - label: "Theme"
                     name: "theme"
                     widget: "select"
@@ -72,8 +78,9 @@ collections:
               - label: "Grid"
                 name: "grid"
                 widget: "object"
+                hint: "A section that displays multiple items in a grid layout."
                 fields:
-                  - {label: "Title", name: "title", widget: "string", required: false}
+                  - {label: "Title", name: "title", widget: "string", required: false, hint: "An optional title for the entire grid section."}
                   - label: "Theme"
                     name: "theme"
                     widget: "select"
@@ -82,12 +89,13 @@ collections:
                     name: "items"
                     widget: "list"
                     fields:
-                      - {label: "Title", name: "title", widget: "string"}
-                      - {label: "Text", name: "text", widget: "string"}
-                      - {label: "Image", name: "image", widget: "image", required: false}
+                      - {label: "Title", name: "title", widget: "string", hint: "The title of this individual grid item."}
+                      - {label: "Text", name: "text", widget: "string", hint: "The descriptive text for this grid item."}
+                      - {label: "Image", name: "image", widget: "image", required: false, hint: "An optional image for this grid item."}
               - label: "Call to Action"
                 name: "cta"
                 widget: "object"
+                hint: "A section designed to prompt the user to take a specific action (e.g., sign up, contact us)."
                 fields:
                   - {label: "Title", name: "title", widget: "string"}
                   - {label: "Text", name: "text", widget: "string", required: false}
@@ -123,9 +131,9 @@ collections:
     format: "frontmatter"
     fields:
       - {label: "Layout", name: "layout", widget: "hidden", default: "../../layouts/BlogPost.astro"}
-      - {label: "Title", name: "title", widget: "string"}
-      - {label: "Description", name: "description", widget: "text"}
-      - {label: "Author", name: "author", widget: "string"}
-      - {label: "Publication Date", name: "pubDate", widget: "datetime"}
-      - {label: "Hero Image", name: "heroImage", widget: "image"}
-      - {label: "Body", name: "body", widget: "markdown"}
+      - {label: "Title", name: "title", widget: "string", hint: "The main headline of the blog post."}
+      - {label: "Description", name: "description", widget: "text", hint: "A short summary of the post for search engines and social media previews."}
+      - {label: "Author", name: "author", widget: "string", hint: "The name of the person who wrote the article."}
+      - {label: "Publication Date", name: "pubDate", widget: "datetime", hint: "Set a date in the future to schedule the post."}
+      - {label: "Hero Image", name: "heroImage", widget: "image", hint: "The main image that appears at the top of the post."}
+      - {label: "Body", name: "body", widget: "markdown", hint: "The main content of the article, written in Markdown."}
