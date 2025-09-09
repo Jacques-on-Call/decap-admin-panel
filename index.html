@@ -7,31 +7,52 @@
   <title>Content Manager</title>
   <link href="/config.yml" type="text/yaml" rel="cms-config-url">
   <style>
-    /*
-      Custom CSS for improving Decap CMS mobile layout and fixing overflow.
-    */
+    /* Custom CSS for Decap CMS Mobile UX */
     @media (max-width: 768px) {
-      /*
-        Target the main sidebar in Decap CMS to make it more compact.
-      */
+      /* Hamburger button style */
+      .sidebar-toggle {
+        display: block;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 10000;
+        background: #3a3a3a;
+        color: white;
+        border: 1px solid #555;
+        padding: 6px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      /* Sidebar is hidden by default off-screen */
       #nc-root > div > section:first-of-type {
-        width: 180px !important;
-        min-width: 180px !important;
+        position: fixed;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 9999;
+        background: #f7f7f7; /* Add a background to overlay content */
+        border-right: 1px solid #ccc;
+        width: 280px !important; /* Give it a nice width when it slides out */
+        min-width: 280px !important;
       }
 
-      /*
-        Adjust the main content area to account for the smaller sidebar.
-      */
+      /* State when sidebar is open */
+      #nc-root.sidebar-open > div > section:first-of-type {
+        transform: translateX(0);
+      }
+
+      /* Main content area is full-width by default */
       #nc-root > div > main {
-        padding-left: 180px !important;
+        padding-left: 0 !important;
       }
 
-      /*
-        Target the main editor header to fix overflow by allowing wrapping.
-      */
+      /* Header overflow fix and padding for the hamburger button */
       #nc-root header {
         flex-wrap: wrap !important;
-        padding: 8px !important;
+        padding: 8px 8px 8px 60px !important; /* Add left padding to not overlap with button */
         min-width: 0;
       }
     }
@@ -78,6 +99,50 @@
 
 <!-- 🔹 3. Load Decap CMS (must come last) -->
 <script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js" data-cfasync="false"></script>
+
+<!-- 🔹 4. Custom script for mobile hamburger sidebar -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Only run this on smaller screens
+  if (window.innerWidth > 768) {
+    return;
+  }
+
+  const ncRoot = document.getElementById('nc-root');
+  if (!ncRoot) return;
+
+  // Create and inject the hamburger button
+  const toggleButton = document.createElement('button');
+  toggleButton.innerHTML = '&#9776;'; // Hamburger icon
+  toggleButton.className = 'sidebar-toggle';
+
+  // Decap CMS renders its UI after the page loads, so we need to wait for the header to appear.
+  // A MutationObserver is a robust way to do this.
+  const observer = new MutationObserver(function (mutations, me) {
+    const header = ncRoot.querySelector('header');
+    if (header) {
+      // Inject the button before the header
+      header.parentNode.insertBefore(toggleButton, header);
+      me.disconnect(); // Stop observing once we've injected the button
+    }
+  });
+
+  // Start observing the nc-root element for changes
+  observer.observe(ncRoot, { childList: true, subtree: true });
+
+  // Add click listener to the button to toggle the sidebar
+  toggleButton.addEventListener('click', function () {
+    ncRoot.classList.toggle('sidebar-open');
+  });
+
+  // Add a listener to the whole container to close the sidebar when a collection link is clicked
+  ncRoot.addEventListener('click', function(e) {
+    if (ncRoot.classList.contains('sidebar-open') && e.target.closest('a[href^="#/collections/"]')) {
+      ncRoot.classList.remove('sidebar-open');
+    }
+  });
+});
+</script>
 
 </body>
 </html>
