@@ -44,14 +44,16 @@ collections:
               - label: "Hero"
                 name: "hero"
                 widget: "object"
+                hint: "A large, visually prominent section, usually at the top of the page."
                 fields:
-                  - {label: "Title", name: "title", widget: "string"}
-                  - {label: "Subtitle", name: "subtitle", widget: "string", required: false}
-                  - {label: "Image", name: "image", widget: "image", required: false}
+                  - {label: "Title", name: "title", widget: "string", hint: "The main headline for the hero section."}
+                  - {label: "Subtitle", name: "subtitle", widget: "string", required: false, hint: "A smaller line of text under the main headline."}
+                  - {label: "Image", name: "image", widget: "image", required: false, hint: "A background image for the hero section."}
                   - label: "Theme"
                     name: "theme"
                     widget: "select"
                     options: ["light", "dark", "accent"]
+                    hint: "Adjusts the color scheme of the text and buttons."
                   - label: "Buttons"
                     name: "buttons"
                     widget: "list"
@@ -66,8 +68,9 @@ collections:
               - label: "Text Block"
                 name: "text_block"
                 widget: "object"
+                hint: "A simple block of text content, formatted with Markdown."
                 fields:
-                  - {label: "Content", name: "content", widget: "markdown"}
+                  - {label: "Content", name: "content", widget: "markdown", hint: "The main text content. Use Markdown for formatting (e.g., # for headings, ** for bold)."}
                   - label: "Theme"
                     name: "theme"
                     widget: "select"
@@ -75,8 +78,9 @@ collections:
               - label: "Grid"
                 name: "grid"
                 widget: "object"
+                hint: "A section that displays multiple items in a grid layout."
                 fields:
-                  - {label: "Title", name: "title", widget: "string", required: false}
+                  - {label: "Title", name: "title", widget: "string", required: false, hint: "An optional title for the entire grid section."}
                   - label: "Theme"
                     name: "theme"
                     widget: "select"
@@ -85,12 +89,13 @@ collections:
                     name: "items"
                     widget: "list"
                     fields:
-                      - {label: "Title", name: "title", widget: "string"}
-                      - {label: "Text", name: "text", widget: "string"}
-                      - {label: "Image", name: "image", widget: "image", required: false}
+                      - {label: "Title", name: "title", widget: "string", hint: "The title of this individual grid item."}
+                      - {label: "Text", name: "text", widget: "string", hint: "The descriptive text for this grid item."}
+                      - {label: "Image", name: "image", widget: "image", required: false, hint: "An optional image for this grid item."}
               - label: "Call to Action"
                 name: "cta"
                 widget: "object"
+                hint: "A section designed to prompt the user to take a specific action (e.g., sign up, contact us)."
                 fields:
                   - {label: "Title", name: "title", widget: "string"}
                   - {label: "Text", name: "text", widget: "string", required: false}

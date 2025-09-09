@@ -7,42 +7,32 @@
   <title>Content Manager</title>
   <link href="/config.yml" type="text/yaml" rel="cms-config-url">
   <style>
-    /* 1. More robust horizontal scroll prevention */
-    html, body {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: hidden;
-    }
-
-    /* Target the Decap root as well, as it's the main container */
-    #nc-root {
-      overflow-x: hidden;
-    }
-
-    /* 2. Improve mobile layout using a media query */
+    /*
+      Custom CSS for improving Decap CMS mobile layout and fixing overflow.
+    */
     @media (max-width: 768px) {
       /*
-        Target the main sidebar in Decap CMS.
-        We use :first-of-type to reliably select the sidebar <section>
-        without relying on unstable, auto-generated class names.
+        Target the main sidebar in Decap CMS to make it more compact.
       */
       #nc-root > div > section:first-of-type {
-        /*
-          Reduce the width of the sidebar to give more space to content.
-          Using !important to ensure this override applies.
-        */
         width: 180px !important;
         min-width: 180px !important;
       }
 
       /*
-        Target the main content area to adjust its position.
+        Adjust the main content area to account for the smaller sidebar.
       */
       #nc-root > div > main {
-        /*
-          The padding should match the new width of the sidebar.
-        */
         padding-left: 180px !important;
+      }
+
+      /*
+        Target the main editor header to fix overflow by allowing wrapping.
+      */
+      #nc-root header {
+        flex-wrap: wrap !important;
+        padding: 8px !important;
+        min-width: 0;
       }
     }
   </style>
