@@ -11,104 +11,109 @@ public_folder: "/images" # The src attribute for uploaded media will begin with 
 collections:
   - name: "pages"
     label: "Pages"
-    folder: "src/pages"
-    create: true
-    slug: "{{slug}}"
-    identifier_field: "title"
-    summary: "{{title}}"
-    extension: "astro"
-    format: "frontmatter"
-    fields:
-      - {label: "Layout", name: "layout", widget: "hidden", default: "../layouts/MainLayout.astro"}
-      - {label: "Title", name: "title", widget: "string"}
-      - {label: "Slug", name: "slug", widget: "string"}
-      - {label: "Description", name: "description", widget: "text"}
-      - label: "Meta / SEO"
-        name: "meta"
-        widget: "object"
-        collapsed: true
-        fields:
-          - {label: "Meta Title", name: "title", widget: "string", required: false}
-          - {label: "Meta Description", name: "description", widget: "text", required: false}
-          - {label: "Canonical URL", name: "canonicalURL", widget: "string", required: false}
-      - label: "Schema.org (JSON-LD)"
-        name: "schema"
-        widget: "object"
-        collapsed: true
-        fields:
-          - {label: "JSON-LD", name: "ldjson", widget: "code", default_language: "json", output_code_only: true, required: false}
-      - label: "Page Sections"
-        name: "sections"
-        widget: "list"
-        types:
-          - label: "Hero"
-            name: "hero"
+    files:
+      - label: "Home Page"
+        name: "index"
+        file: "src/pages/index.astro"
+        fields: &pages_fields
+          - {label: "Layout", name: "layout", widget: "hidden", default: "../layouts/MainLayout.astro"}
+          - {label: "Title", name: "title", widget: "string"}
+          - {label: "Slug", name: "slug", widget: "string"}
+          - {label: "Description", name: "description", widget: "text"}
+          - label: "Meta / SEO"
+            name: "meta"
             widget: "object"
+            collapsed: true
             fields:
-              - {label: "Title", name: "title", widget: "string"}
-              - {label: "Subtitle", name: "subtitle", widget: "string", required: false}
-              - {label: "Image", name: "image", widget: "image", required: false}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-              - label: "Buttons"
-                name: "buttons"
-                widget: "list"
-                required: false
-                fields:
-                  - {label: "Button Text", name: "text", widget: "string"}
-                  - {label: "Button URL", name: "url", widget: "string"}
-                  - label: "Button Style"
-                    name: "style"
-                    widget: "select"
-                    options: ["primary", "ghost", "link"]
-          - label: "Text Block"
-            name: "text_block"
+              - {label: "Meta Title", name: "title", widget: "string", required: false}
+              - {label: "Meta Description", name: "description", widget: "text", required: false}
+              - {label: "Canonical URL", name: "canonicalURL", widget: "string", required: false}
+          - label: "Schema.org (JSON-LD)"
+            name: "schema"
             widget: "object"
+            collapsed: true
             fields:
-              - {label: "Content", name: "content", widget: "markdown"}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-          - label: "Grid"
-            name: "grid"
-            widget: "object"
-            fields:
-              - {label: "Title", name: "title", widget: "string", required: false}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-              - label: "Grid Items"
-                name: "items"
-                widget: "list"
+              - {label: "JSON-LD", name: "ldjson", widget: "code", default_language: "json", output_code_only: true, required: false}
+          - label: "Page Sections"
+            name: "sections"
+            widget: "list"
+            types:
+              - label: "Hero"
+                name: "hero"
+                widget: "object"
                 fields:
                   - {label: "Title", name: "title", widget: "string"}
-                  - {label: "Text", name: "text", widget: "string"}
+                  - {label: "Subtitle", name: "subtitle", widget: "string", required: false}
                   - {label: "Image", name: "image", widget: "image", required: false}
-          - label: "Call to Action"
-            name: "cta"
-            widget: "object"
-            fields:
-              - {label: "Title", name: "title", widget: "string"}
-              - {label: "Text", name: "text", widget: "string", required: false}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-              - label: "Buttons"
-                name: "buttons"
-                widget: "list"
-                required: false
-                fields:
-                  - {label: "Button Text", name: "text", widget: "string"}
-                  - {label: "Button URL", name: "url", widget: "string"}
-                  - label: "Button Style"
-                    name: "style"
+                  - label: "Theme"
+                    name: "theme"
                     widget: "select"
-                    options: ["primary", "ghost", "link"]
+                    options: ["light", "dark", "accent"]
+                  - label: "Buttons"
+                    name: "buttons"
+                    widget: "list"
+                    required: false
+                    fields:
+                      - {label: "Button Text", name: "text", widget: "string"}
+                      - {label: "Button URL", name: "url", widget: "string"}
+                      - label: "Button Style"
+                        name: "style"
+                        widget: "select"
+                        options: ["primary", "ghost", "link"]
+              - label: "Text Block"
+                name: "text_block"
+                widget: "object"
+                fields:
+                  - {label: "Content", name: "content", widget: "markdown"}
+                  - label: "Theme"
+                    name: "theme"
+                    widget: "select"
+                    options: ["light", "dark", "accent"]
+              - label: "Grid"
+                name: "grid"
+                widget: "object"
+                fields:
+                  - {label: "Title", name: "title", widget: "string", required: false}
+                  - label: "Theme"
+                    name: "theme"
+                    widget: "select"
+                    options: ["light", "dark", "accent"]
+                  - label: "Grid Items"
+                    name: "items"
+                    widget: "list"
+                    fields:
+                      - {label: "Title", name: "title", widget: "string"}
+                      - {label: "Text", name: "text", widget: "string"}
+                      - {label: "Image", name: "image", widget: "image", required: false}
+              - label: "Call to Action"
+                name: "cta"
+                widget: "object"
+                fields:
+                  - {label: "Title", name: "title", widget: "string"}
+                  - {label: "Text", name: "text", widget: "string", required: false}
+                  - label: "Theme"
+                    name: "theme"
+                    widget: "select"
+                    options: ["light", "dark", "accent"]
+                  - label: "Buttons"
+                    name: "buttons"
+                    widget: "list"
+                    required: false
+                    fields:
+                      - {label: "Button Text", name: "text", widget: "string"}
+                      - {label: "Button URL", name: "url", widget: "string"}
+                      - label: "Button Style"
+                        name: "style"
+                        widget: "select"
+                        options: ["primary", "ghost", "link"]
+      - label: "About Page"
+        name: "about"
+        file: "src/pages/about.astro"
+        fields: *pages_fields
+      - label: "Contact Page"
+        name: "contact"
+        file: "src/pages/contact.astro"
+        fields: *pages_fields
   - name: "blog"
     label: "Blog"
     folder: "src/pages/blog"
