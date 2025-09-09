@@ -42,24 +42,27 @@
 </head>
 <body>
 
-<!-- 🔹 1. Debug Panel (mobile-friendly visibility + message logger) -->
+<!-- 🔹 1. Debug Panel (conditionally shown via ?debug=true) -->
 <script>
 (function () {
-  const panel = document.createElement('div');
-  panel.id = 'decap-debug';
-  panel.style = 'position:fixed;left:8px;bottom:8px;z-index:99999;background:#111;color:#fff;padding:8px;font-size:12px;border-radius:6px;opacity:.85;max-width:320px';
-  panel.innerHTML = '<strong>Decap Debug</strong><div id="decap-debug-log" style="margin-top:6px"></div><button id="decap-debug-test" style="margin-top:6px">Simulate message</button>';
-  document.addEventListener('DOMContentLoaded', () => document.body.appendChild(panel));
-  function log(m){ const el=document.getElementById('decap-debug-log'); if(!el)return; el.innerHTML += '<div style="margin-top:4px;">'+String(m)+'</div>'; }
-  log('stored token: ' + (localStorage.getItem('decap-cms:githubToken') || '—none—'));
-  window.addEventListener('message', e => log('message from ' + e.origin + ': ' + (typeof e.data === 'string' ? e.data : JSON.stringify(e.data))));
-  document.addEventListener('click', e => {
-    if (e.target && e.target.id === 'decap-debug-test') {
-      const payload = JSON.stringify({ token: 'TEST_TOKEN_PLACEHOLDER', provider: 'github' });
-      window.postMessage(`authorization:github:success:${payload}`, window.location.origin);
-      log('emitted simulated authorization message');
-    }
-  });
+  // Only show the debug panel if the ?debug query parameter is present
+  if (new URLSearchParams(window.location.search).has('debug')) {
+    const panel = document.createElement('div');
+    panel.id = 'decap-debug';
+    panel.style = 'position:fixed;left:8px;bottom:8px;z-index:99999;background:#111;color:#fff;padding:8px;font-size:12px;border-radius:6px;opacity:.85;max-width:320px';
+    panel.innerHTML = '<strong>Decap Debug</strong><div id="decap-debug-log" style="margin-top:6px"></div><button id="decap-debug-test" style="margin-top:6px">Simulate message</button>';
+    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(panel));
+    function log(m){ const el=document.getElementById('decap-debug-log'); if(!el)return; el.innerHTML += '<div style="margin-top:4px;">'+String(m)+'</div>'; }
+    log('stored token: ' + (localStorage.getItem('decap-cms:githubToken') || '—none—'));
+    window.addEventListener('message', e => log('message from ' + e.origin + ': ' + (typeof e.data === 'string' ? e.data : JSON.stringify(e.data))));
+    document.addEventListener('click', e => {
+      if (e.target && e.target.id === 'decap-debug-test') {
+        const payload = JSON.stringify({ token: 'TEST_TOKEN_PLACEHOLDER', provider: 'github' });
+        window.postMessage(`authorization:github:success:${payload}`, window.location.origin);
+        log('emitted simulated authorization message');
+      }
+    });
+  }
 })();
 </script>
 
