@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,18 +8,8 @@
   <link href="/config.yml" type="text/yaml" rel="cms-config-url">
 </head>
 <body>
-  <script>
-(function () {
-  var m = (location.hash || "").match(/\baccess_token=([^&]+)/);
-  if (m) {
-    try {
-      localStorage.setItem("decap-cms:githubToken", decodeURIComponent(m[1]));
-    } catch (_) {}
-    history.replaceState(null, "", location.pathname + location.search);
-  }
-})();
-</script>
-  
+
+<!-- 🔹 1. Debug Panel (mobile-friendly visibility + message logger) -->
 <script>
 (function () {
   const panel = document.createElement('div');
@@ -40,6 +30,20 @@
 })();
 </script>
 
+<!-- 🔹 2. Hash-to-localStorage fallback (for redirect-based token delivery) -->
+<script>
+(function () {
+  var m = (location.hash || "").match(/\baccess_token=([^&]+)/);
+  if (m) {
+    try {
+      localStorage.setItem("decap-cms:githubToken", decodeURIComponent(m[1]));
+    } catch (_) {}
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+})();
+</script>
+
+<!-- 🔹 3. Load Decap CMS (must come last) -->
 <script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js" data-cfasync="false"></script>
 
 </body>
