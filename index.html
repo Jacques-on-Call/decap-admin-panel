@@ -6,6 +6,39 @@
   <meta name="robots" content="noindex" />
   <title>Content Manager</title>
   <link href="/config.yml" type="text/yaml" rel="cms-config-url">
+  <style>
+    /* 1. Prevent horizontal scrolling on the whole page */
+    body {
+      overflow-x: hidden;
+    }
+
+    /* 2. Improve mobile layout using a media query */
+    @media (max-width: 768px) {
+      /*
+        Target the main sidebar in Decap CMS.
+        We use :first-of-type to reliably select the sidebar <section>
+        without relying on unstable, auto-generated class names.
+      */
+      #nc-root > div > section:first-of-type {
+        /*
+          Reduce the width of the sidebar to give more space to content.
+          Using !important to ensure this override applies.
+        */
+        width: 180px !important;
+        min-width: 180px !important;
+      }
+
+      /*
+        Target the main content area to adjust its position.
+      */
+      #nc-root > div > main {
+        /*
+          The padding should match the new width of the sidebar.
+        */
+        padding-left: 180px !important;
+      }
+    }
+  </style>
 </head>
 <body>
 
