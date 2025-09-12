@@ -18,19 +18,23 @@
 
             if (token) {
                 console.log('Token found, sending message');
-                // Send message to opener
-                if (window.opener) {
-                    window.opener.postMessage(JSON.stringify({
-                        type: 'authorization_complete',
-                        token: token
-                    }), window.location.origin);
-                } else {
-                    console.error('No window opener found');
-                }
-                window.close();
+                // Send message to opener with retry mechanism
+                const sendMessage = () => {
+                    if (window.opener && !window.opener.closed) {
+                        window.opener.postMessage(JSON.stringify({
+                            type: 'authorization_complete',
+                            token: token
+                        }), window.location.origin);
+                        window.close();
+                    } else {
+                        // Retry after short delay if opener not ready
+                        setTimeout(sendMessage, 100);
+                    }
+                };
+                sendMessage();
             } else if (error) {
                 console.error('Auth error:', error);
-                if (window.opener) {
+                if (window.opener && !window.opener.closed) {
                     window.opener.postMessage(JSON.stringify({
                         type: 'authorization_error',
                         error: error
@@ -55,6 +59,6 @@
     </script>
 </head>
 <body>
-    <p>Completing authentication...</p>
+    <p>Completing authentication... Please wait.</p>
 </body>
 </html>
