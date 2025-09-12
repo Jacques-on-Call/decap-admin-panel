@@ -1,6 +1,6 @@
 /**
  * Enhanced Mobile UX for Decap CMS
- * More robust implementation with fallbacks
+ * Handles the specific DOM structure created by Decap CMS
  */
 function initializeMobileUX() {
   const MOBILE_BREAKPOINT = 768;
@@ -10,56 +10,45 @@ function initializeMobileUX() {
     return;
   }
   
-  console.log('Initializing mobile UX enhancements');
+  console.log('Initializing mobile UX enhancements for Decap CMS');
   
-  // Multiple selectors to find the sidebar
-  const sidebarSelectors = [
-    '[data-testid="sidebar"]',
-    'div[class*="Sidebar"]',
-    'aside[class*="sidebar"]',
-    'nav[class*="sidebar"]'
-  ];
+  // Function to find elements by partial class name
+  function findElementByPartialClass(partialClass) {
+    const elements = document.querySelectorAll('*');
+    for (let i = 0; i < elements.length; i++) {
+      if (elements[i].className && typeof elements[i].className === 'string' && 
+          elements[i].className.includes(partialClass)) {
+        return elements[i];
+      }
+    }
+    return null;
+  }
   
-  // Multiple selectors to find the debug pane
-  const debugPaneSelectors = [
-    '[data-testid="decap-debug-pane"]',
-    'div[class*="Debug"]',
-    'div[class*="debug"]',
-    'aside[class*="Debug"]'
-  ];
-  
+  // Find the sidebar (first child of the main container)
+  const mainContainer = document.querySelector('#nc-root > div > div:first-child');
   let sidebar = null;
-  let debugPane = null;
+  let contentArea = null;
   
-  // Try to find sidebar using multiple selectors
-  for (const selector of sidebarSelectors) {
-    sidebar = document.querySelector(selector);
-    if (sidebar) break;
+  if (mainContainer && mainContainer.children.length >= 2) {
+    sidebar = mainContainer.children[0];
+    contentArea = mainContainer.children[1];
   }
   
-  // Try to find debug pane using multiple selectors
-  for (const selector of debugPaneSelectors) {
-    debugPane = document.querySelector(selector);
-    if (debugPane) break;
-  }
+  // Find debug panel
+  const debugPanel = document.getElementById('decap-debug');
   
   // If we found the sidebar, set up mobile UI
   if (sidebar) {
-    setupMobileUI(sidebar, debugPane);
+    setupMobileUI(sidebar, debugPanel);
   } else {
     // If sidebar not found, try again after a delay
     console.log('Sidebar not found, retrying in 1 second');
     setTimeout(() => {
-      for (const selector of sidebarSelectors) {
-        sidebar = document.querySelector(selector);
-        if (sidebar) break;
-      }
-      if (sidebar) {
-        for (const selector of debugPaneSelectors) {
-          debugPane = document.querySelector(selector);
-          if (debugPane) break;
-        }
-        setupMobileUI(sidebar, debugPane);
+      const mainContainer = document.querySelector('#nc-root > div > div:first-child');
+      if (mainContainer && mainContainer.children.length >= 2) {
+        sidebar = mainContainer.children[0];
+        contentArea = mainContainer.children[1];
+        setupMobileUI(sidebar, debugPanel);
       } else {
         console.error('Could not find Decap CMS sidebar after retry');
       }
@@ -68,12 +57,12 @@ function initializeMobileUX() {
   
   function setupMobileUI(originalSidebar, originalDebugPane) {
     // Create panels for mobile
-    const collectionsPanel = createPanel('collections-panel');
-    const debugPanel = createPanel('debug-panel');
+    const collectionsPanel = createPanel('collections-panel', 'Collections');
+    const debugPanel = createPanel('debug-panel', 'Debug');
     
     // Move content from original sidebar to our mobile panel
     while (originalSidebar.firstChild) {
-      collectionsPanel.appendChild(originalSidebar.firstChild);
+      collectionsPanel.querySelector('.mobile-panel-content').appendChild(originalSidebar.firstChild);
     }
     
     // Hide the original sidebar
@@ -82,9 +71,11 @@ function initializeMobileUX() {
     // If debug pane exists, move its content
     if (originalDebugPane) {
       while (originalDebugPane.firstChild) {
-        debugPanel.appendChild(originalDebugPane.firstChild);
+        debugPanel.querySelector('.mobile-panel-content').appendChild(originalDebugPane.firstChild);
       }
       originalDebugPane.style.display = 'none';
+    } else {
+      debugPanel.querySelector('.mobile-panel-content').innerHTML = '<p>Debug information not available</p>';
     }
     
     // Create toggle buttons
@@ -102,16 +93,37 @@ function initializeMobileUX() {
     document.body.appendChild(debugPanel);
     document.body.appendChild(togglesContainer);
     
-    // Add a class to body to indicate mobile UX is enabled
-    document.body.classList.add('mobile-ux-enabled');
-    
     console.log('Mobile UX enhancements applied');
   }
   
-  function createPanel(id) {
+  function createPanel(id, title) {
     const panel = document.createElement('div');
     panel.id = id;
     panel.className = 'mobile-panel';
+    
+    const panelHeader = document.createElement('div');
+    panelHeader.style.padding = '10px';
+    panelHeader.style.borderBottom = '1px solid #eee';
+    panelHeader.style.fontWeight = 'bold';
+    panelHeader.textContent = title;
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'mobile-panel-close';
+    closeButton.innerHTML = '×';
+    closeButton.addEventListener('click', () => {
+      panel.classList.remove('active');
+    });
+    panelHeader.appendChild(closeButton);
+    
+    const panelContent = document.createElement('div');
+    panelContent.className = 'mobile-panel-content';
+    panelContent.style.padding = '10px';
+    panelContent.style.overflowY = 'auto';
+    panelContent.style.height = 'calc(100% - 40px)';
+    
+    panel.appendChild(panelHeader);
+    panel.appendChild(panelContent);
+    
     return panel;
   }
   
@@ -150,14 +162,8 @@ function initializeMobileUX() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeMobileUX);
 } else {
-  // If DOM is already loaded, initialize immediately
   initializeMobileUX();
 }
 
-// Also try initializing when the CMS signals it's ready
-if (typeof CMS !== 'undefined') {
-  CMS.registerEventListener({
-    name: 'UI_READY',
-    handler: initializeMobileUX
-  });
-}
+// Also try initializing when the window loads
+window.addEventListener('load', initializeMobileUX);
