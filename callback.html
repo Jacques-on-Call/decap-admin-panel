@@ -1,13 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Authentication Callback</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- This script will handle the postMessage auth flow automatically -->
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+    <meta charset="utf-8">
+    <title>Authentication Callback</title>
+    <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Callback page loaded');
+
+        // Try to get token from URL hash
+        const hash = window.location.hash;
+        if (hash) {
+            console.log('Hash found:', hash);
+            const params = new URLSearchParams(hash.substring(1));
+            const token = params.get('access_token');
+            const error = params.get('error');
+
+            if (token) {
+                console.log('Token found, sending message');
+                // Send message to opener
+                if (window.opener) {
+                    window.opener.postMessage(JSON.stringify({
+                        type: 'authorization_complete',
+                        token: token
+                    }), window.location.origin);
+                } else {
+                    console.error('No window opener found');
+                }
+                window.close();
+            } else if (error) {
+                console.error('Auth error:', error);
+                if (window.opener) {
+                    window.opener.postMessage(JSON.stringify({
+                        type: 'authorization_error',
+                        error: error
+                    }), window.location.origin);
+                }
+                window.close();
+            }
+        } else {
+            console.log('No hash found in URL');
+            // Fallback: check for query parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('access_token');
+            if (token && window.opener) {
+                window.opener.postMessage(JSON.stringify({
+                    type: 'authorization_complete',
+                    token: token
+                }), window.location.origin);
+                window.close();
+            }
+        }
+    });
+    </script>
 </head>
 <body>
-  Authenticating...
+    <p>Completing authentication...</p>
 </body>
 </html>
