@@ -5,54 +5,67 @@
     <title>Authentication Callback</title>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Callback page loaded');
+        console.log('Callback page loaded. Origin:', window.location.origin);
 
-        // Try to get token from URL hash
-        const hash = window.location.hash;
-        if (hash) {
-            console.log('Hash found:', hash);
-            const params = new URLSearchParams(hash.substring(1));
-            const token = params.get('access_token');
-            const error = params.get('error');
+        const postSuccess = (token) => {
+            const message = `authorization:github:success:${JSON.stringify({
+                provider: 'github',
+                token: token
+            })}`;
+            sendMessage(message);
+        };
 
-            if (token) {
-                console.log('Token found, sending message');
-                // Send message to opener with retry mechanism
-                const sendMessage = () => {
-                    if (window.opener && !window.opener.closed) {
-                        window.opener.postMessage(JSON.stringify({
-                            type: 'authorization_complete',
-                            token: token
-                        }), window.location.origin);
-                        window.close();
-                    } else {
-                        // Retry after short delay if opener not ready
-                        setTimeout(sendMessage, 100);
-                    }
-                };
-                sendMessage();
-            } else if (error) {
-                console.error('Auth error:', error);
+        const postError = (error, error_description) => {
+            const message = `authorization:github:error:${JSON.stringify({
+                error: error,
+                error_description: error_description
+            })}`;
+            sendMessage(message);
+        };
+
+        const sendMessage = (message) => {
+            console.log('Attempting to post message:', message);
+            let attempts = 0;
+            const send = () => {
                 if (window.opener && !window.opener.closed) {
-                    window.opener.postMessage(JSON.stringify({
-                        type: 'authorization_error',
-                        error: error
-                    }), window.location.origin);
+                    window.opener.postMessage(message, window.location.origin);
+                    console.log('Message sent to opener.');
+                    window.close();
+                } else {
+                    attempts++;
+                    if (attempts < 20) { // Retry for ~2 seconds
+                        console.log('Opener not found or closed, retrying...');
+                        setTimeout(send, 100);
+                    } else {
+                        console.error('Could not find opener window after multiple attempts. Closing.');
+                        window.close();
+                    }
                 }
-                window.close();
-            }
+            };
+            send();
+        };
+
+        // The auth service might return params in the hash or query string.
+        // Let's check both, starting with the hash as it's more common for SPAs.
+        let params = new URLSearchParams(window.location.hash.substring(1));
+        if (!params.has('access_token') && !params.has('error')) {
+            params = new URLSearchParams(window.location.search);
+        }
+
+        const token = params.get('access_token');
+        const error = params.get('error');
+        const errorDescription = params.get('error_description');
+
+        if (token) {
+            console.log('Token found. Preparing to send success message.');
+            postSuccess(token);
+        } else if (error) {
+            console.error('Authentication error found:', error, errorDescription);
+            postError(error, errorDescription);
         } else {
-            console.log('No hash found in URL');
-            // Fallback: check for query parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('access_token');
-            if (token && window.opener) {
-                window.opener.postMessage(JSON.stringify({
-                    type: 'authorization_complete',
-                    token: token
-                }), window.location.origin);
-                window.close();
-            }
+            console.error('No token or error found in URL. This is unexpected.');
+            // Optional: You could post a generic error back to the main window.
+            postError('unknown_error', 'The authentication provider did not return a token or an error.');
         }
     });
     </script>
