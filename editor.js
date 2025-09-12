@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURATION ---
-    const AUTH_URL = 'https://auth.strategycontent.agency/auth';
     const OAUTH_CLIENT_ID = 'Ov23li6LEsxbtoV7ITp1';
     const REPO_OWNER = 'Jacques-on-Call';
     const REPO_NAME = 'StrategyContent';
@@ -116,11 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function redirectToGitHubAuth() {
         const redirectUri = `${window.location.origin}/callback.html`;
-        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        // Bypass the faulty proxy and go directly to GitHub
+        const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`;
+
         const popupWidth = 600;
         const popupHeight = 800;
         const left = (window.screen.width / 2) - (popupWidth / 2);
         const top = (window.screen.height / 2) - (popupHeight / 2);
+
         authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
     }
 
