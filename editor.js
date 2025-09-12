@@ -82,43 +82,70 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error loading editor configuration:', error); }
     }
 
-    // --- AUTHENTICATION ---
+    // --- AUTHENTICATION (Solution from DeepSeek) ---
     function handleAuthentication() {
-        window.addEventListener('message', (event) => {
+        accessToken = localStorage.getItem('github_token');
+        const messageHandler = (event) => {
             if (event.origin !== window.location.origin) {
                 console.warn(`Message from untrusted origin '${event.origin}' was ignored.`);
                 return;
             }
-            if (event.data && typeof event.data === 'string' && event.data.includes('authorization')) {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'authorization_complete' && data.token) {
-                        accessToken = data.token;
-                        localStorage.setItem('github_token', accessToken);
-                        showToast('Logged in successfully!', 'success');
-                        updateUI();
-                        if (authPopup) authPopup.close();
-                    } else if (data.type === 'authorization_error') {
-                        throw new Error(data.error);
+            console.log('Received message:', event.data);
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                if (data.type === 'authorization_complete' && data.token) {
+                    accessToken = data.token;
+                    localStorage.setItem('github_token', accessToken);
+                    showToast('Logged in successfully!', 'success');
+                    updateUI();
+                    if (authPopup) {
+                        authPopup.close();
+                        authPopup = null;
                     }
-                } catch (e) {
-                    console.error('Could not parse auth message or auth failed:', e);
-                    showToast(`Authentication failed: ${e.message}`, 'error');
+                    window.removeEventListener('message', messageHandler);
+                } else if (data.type === 'authorization_error') {
+                    showToast(`Authentication failed: ${data.error}`, 'error');
+                    console.error('Auth error:', data.error);
                 }
+            } catch (e) {
+                console.error('Could not parse auth message:', e, 'Raw data:', event.data);
             }
-        });
-        accessToken = localStorage.getItem('github_token');
-        updateUI();
+        };
+        window.addEventListener('message', messageHandler);
+        checkUrlHashForToken();
+    }
+
+    function checkUrlHashForToken() {
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+            const params = new URLSearchParams(hash.substring(1));
+            const token = params.get('access_token');
+            if (token) {
+                accessToken = token;
+                localStorage.setItem('github_token', accessToken);
+                window.history.replaceState({}, document.title, window.location.pathname);
+                updateUI();
+                showToast('Logged in successfully!', 'success');
+            }
+        }
     }
 
     function redirectToGitHubAuth() {
         const redirectUri = `${window.location.origin}/callback.html`;
-        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${redirectUri}`;
+        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
         const popupWidth = 600;
         const popupHeight = 800;
         const left = (window.screen.width / 2) - (popupWidth / 2);
         const top = (window.screen.height / 2) - (popupHeight / 2);
         authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
+        const popupCheck = setInterval(() => {
+            if (authPopup && authPopup.closed) {
+                clearInterval(popupCheck);
+                if (!accessToken) {
+                    showToast('Authentication was canceled', 'info');
+                }
+            }
+        }, 500);
     }
 
     function logout() {
@@ -136,7 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
             plugins: 'autoresize link lists wordcount',
             toolbar: 'undo redo | blocks | bold italic | bullist numlist | link removeformat',
             menubar: false, statusbar: false, autoresize_bottom_margin: 20,
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }'
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }',
+            skin: 'oxide',
+            init_instance_callback: function(editor) {
+                console.log('Editor initialized:', editor.id);
+            }
+        }).catch(error => {
+            console.error('TinyMCE initialization error:', error);
+            showToast('Editor initialization failed. Please check your API key.', 'error');
         });
     }
 
@@ -154,7 +188,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (['text', 'code', 'markdown'].includes(field.widget)) {
                     input = document.createElement('textarea');
                     input.rows = field.widget === 'code' ? 10 : (field.widget === 'markdown' ? 15 : 3);
-                    if (field.widget === 'markdown') input.classList.add('wysiwyg-editor');
+                    if (field.widget === 'markdown') {
+                        input.classList.add('wysiwyg-editor');
+                        input.id = `wysiwyg-${field.name}-${Math.random().toString(36).substring(2, 9)}`;
+                    }
                 } else {
                     input = document.createElement('input');
                     input.type = 'text';
@@ -369,13 +406,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeMainApp() {
         await loadEditorConfig();
-        if (editorConfig) { renderFileBrowser(''); }
-        else { document.getElementById('app-container').innerHTML = '<h1 style="color: red;">Could not load editor configuration.</h1>'; }
+        if (editorConfig) {
+            // Initial UI update before auth check
+            updateUI();
+        } else {
+            document.getElementById('app-container').innerHTML = '<h1 style="color: red;">Could not load editor configuration.</h1>';
+        }
     }
 
     function updateUI() {
-        if (accessToken) { loginContainer.style.display = 'none'; appContainer.style.display = 'block'; initializeMainApp(); }
-        else { loginContainer.style.display = 'block'; appContainer.style.display = 'none'; }
+        if (accessToken) {
+            loginContainer.style.display = 'none';
+            appContainer.style.display = 'block';
+            renderFileBrowser('');
+        } else {
+            loginContainer.style.display = 'block';
+            appContainer.style.display = 'none';
+        }
+    }
+
+    // --- MAIN INITIALIZATION ---
+    try {
+        handleAuthentication();
+        initializeMainApp();
+    } catch (error) {
+        console.error('Fatal error during initialization:', error);
+        document.body.innerHTML = '<h1 style="color: red;">A fatal error occurred. Please check the console.</h1>';
     }
 
     // --- EVENT LISTENERS ---
@@ -386,7 +442,4 @@ document.addEventListener('DOMContentLoaded', () => {
     createNewBtn.addEventListener('click', handleCreateNew);
     mobileShowFilesBtn.addEventListener('click', () => document.body.classList.remove('mobile-show-editor'));
     mobileShowEditorBtn.addEventListener('click', () => document.body.classList.add('mobile-show-editor'));
-
-    // --- INITIALIZATION ---
-    handleAuthentication();
 });
