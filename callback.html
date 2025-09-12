@@ -25,24 +25,23 @@
 
         const sendMessage = (message) => {
             console.log('Attempting to post message:', message);
-            let attempts = 0;
-            const send = () => {
-                if (window.opener && !window.opener.closed) {
-                    window.opener.postMessage(message, window.location.origin);
-                    console.log('Message sent to opener.');
+
+            // We must have an opener to send a message to.
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage(message, window.location.origin);
+                console.log('Message sent to opener. Closing window shortly...');
+
+                // Add a small delay before closing to ensure the message is delivered.
+                // 200ms is imperceptible to the user but an eternity for the browser.
+                setTimeout(() => {
                     window.close();
-                } else {
-                    attempts++;
-                    if (attempts < 20) { // Retry for ~2 seconds
-                        console.log('Opener not found or closed, retrying...');
-                        setTimeout(send, 100);
-                    } else {
-                        console.error('Could not find opener window after multiple attempts. Closing.');
-                        window.close();
-                    }
-                }
-            };
-            send();
+                }, 200);
+
+            } else {
+                console.error('Could not find opener window. Cannot send auth token.');
+                // Optionally, show an error to the user in the popup.
+                document.body.innerHTML = '<h1>Error</h1><p>Could not connect back to the main editor window. Please close this window and try again.</p>';
+            }
         };
 
         // The auth service might return params in the hash or query string.
