@@ -5,9 +5,38 @@
     <title>Authentication Callback</title>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Callback page loaded. Origin:', window.location.origin);
+        const debugOutput = document.getElementById('debug-output');
+        function logToScreen(message, type = 'info') {
+            console.log(`[CALLBACK|${type}]`, message);
+            if (debugOutput) {
+                const entry = document.createElement('div');
+                entry.className = type;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                debugOutput.prepend(entry);
+            }
+        }
+
+        logToScreen('Callback page loaded.');
+        logToScreen(`Full URL: ${window.location.href}`);
+
+        const sendMessage = (message) => {
+            logToScreen(`Constructed message: ${message}`, 'success');
+
+            if (window.opener && !window.opener.closed) {
+                logToScreen('Opener window found. Sending message in 200ms...');
+                setTimeout(() => {
+                    window.opener.postMessage(message, window.location.origin);
+                    logToScreen('Message sent. Closing window in 200ms...');
+                    setTimeout(() => window.close(), 200);
+                }, 200);
+            } else {
+                logToScreen('Opener window not found. Cannot send message.', 'error');
+                document.body.innerHTML = '<h1>Error</h1><p>Could not connect back to the main editor window. Please close this window and try again.</p>';
+            }
+        };
 
         const postSuccess = (token) => {
+            logToScreen('postSuccess called with a token.');
             const message = `authorization:github:success:${JSON.stringify({
                 provider: 'github',
                 token: token
@@ -16,6 +45,7 @@
         };
 
         const postError = (error, error_description) => {
+            logToScreen(`postError called: ${error}`, 'error');
             const message = `authorization:github:error:${JSON.stringify({
                 error: error,
                 error_description: error_description
@@ -23,53 +53,56 @@
             sendMessage(message);
         };
 
-        const sendMessage = (message) => {
-            console.log('Attempting to post message:', message);
+        // GitHub's standard OAuth flow returns a `code` in the query string.
+        // Some custom flows might return a token in the hash. We check both.
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
 
-            // We must have an opener to send a message to.
-            if (window.opener && !window.opener.closed) {
-                window.opener.postMessage(message, window.location.origin);
-                console.log('Message sent to opener. Closing window shortly...');
+        const token = hashParams.get('access_token') || queryParams.get('access_token');
+        const code = queryParams.get('code');
+        const error = hashParams.get('error') || queryParams.get('error');
+        const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
 
-                // Add a small delay before closing to ensure the message is delivered.
-                // 200ms is imperceptible to the user but an eternity for the browser.
-                setTimeout(() => {
-                    window.close();
-                }, 200);
-
-            } else {
-                console.error('Could not find opener window. Cannot send auth token.');
-                // Optionally, show an error to the user in the popup.
-                document.body.innerHTML = '<h1>Error</h1><p>Could not connect back to the main editor window. Please close this window and try again.</p>';
-            }
-        };
-
-        // The auth service might return params in the hash or query string.
-        // Let's check both, starting with the hash as it's more common for SPAs.
-        let params = new URLSearchParams(window.location.hash.substring(1));
-        if (!params.has('access_token') && !params.has('error')) {
-            params = new URLSearchParams(window.location.search);
-        }
-
-        const token = params.get('access_token');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
+        logToScreen(`URL Hash Params: ${hashParams.toString()}`);
+        logToScreen(`URL Query Params: ${queryParams.toString()}`);
 
         if (token) {
-            console.log('Token found. Preparing to send success message.');
+            logToScreen('Token found in URL params.', 'success');
             postSuccess(token);
         } else if (error) {
-            console.error('Authentication error found:', error, errorDescription);
+            logToScreen(`Error found in URL params: ${error}`, 'error');
             postError(error, errorDescription);
+        } else if (code) {
+            logToScreen(`Auth code found: ${code}. This requires a server-side exchange which this client cannot do.`, 'error');
+            postError('unsupported_flow', 'Authorization code returned, but no server-side handler is configured to exchange it for a token.');
         } else {
-            console.error('No token or error found in URL. This is unexpected.');
-            // Optional: You could post a generic error back to the main window.
-            postError('unknown_error', 'The authentication provider did not return a token or an error.');
+            logToScreen('No token, code, or error found in URL. Sending a generic message.', 'info');
+            // This is the most likely source of the "not a valid auth string" message.
+            // We will send a message that the main window can recognize as an auth attempt.
+            // Sending an empty string or a non-auth message.
+            sendMessage("authorization:github:error:{\"error\":\"no_token\",\"error_description\":\"Callback page was reached but no token or error was found in the URL.\"}")
         }
     });
     </script>
+<style>
+    body { font-family: monospace; background: #222; color: #eee; }
+    #debug-panel {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        padding: 10px;
+    }
+    #debug-output { height: 100%; overflow-y: scroll; }
+    #debug-output div {
+        border-bottom: 1px solid #333;
+        padding: 2px 0;
+        margin-bottom: 2px;
+    }
+    #debug-output .error { color: #f66; }
+    #debug-output .success { color: #6f6; }
+</style>
 </head>
 <body>
-    <p>Completing authentication... Please wait.</p>
+    <div id="debug-panel">
+        <div id="debug-output"></div>
+    </div>
 </body>
 </html>
