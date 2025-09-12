@@ -1,25 +1,35 @@
-# Decap CMS Admin Panel for Strategy Content
+# Custom Content Editor for Strategy Content
 
-This repository contains the configuration for the [Decap CMS](https://decapcms.org/) (formerly Netlify CMS) admin panel used to manage the content for the `StrategyContent` project.
+This repository hosts a custom-built, single-page web application that serves as a lightweight, mobile-friendly content editor. It is designed to replace the previous Decap CMS setup with a more streamlined, "Google Docs-like" editing experience.
 
-## Relationship with `StrategyContent`
+The application interfaces directly with the `Jacques-on-Call/StrategyContent` GitHub repository to manage content.
 
-This project provides the editor interface, while the actual website content and source code are stored in a separate repository: [Jacques-on-Call/StrategyContent](https://github.com/Jacques-on-Call/StrategyContent).
+## Key Features
 
-The configuration in this repository (`admin/config.yml`) is set up to read from and write to the `StrategyContent` repository.
+- **GitHub Authentication**: Securely logs in users via a custom OAuth service to authorize access to the content repository.
+- **File Browser**: Allows for browsing the content directories (`discover/`, `consider/`, `get/`) within the `StrategyContent` repository.
+- **Dynamic Form Editor**: The editor's fields are dynamically generated based on the schema defined in `admin/config.yml`. This allows the form to adapt to changes in content structure without requiring code changes.
+- **Complex Frontmatter Support**: The editor is designed to handle complex, nested YAML frontmatter, including nested objects for SEO metadata and lists of objects for modular page sections.
+- **WYSIWYG Editing**: Integrates the TinyMCE rich text editor for a "What You See Is What You Get" experience when editing main content blocks.
+- **Full Content Lifecycle**: Users can create new files, open existing files, edit content and frontmatter, and save all changes back to the GitHub repository as new commits.
+- **Responsive UI**: The interface is designed to be mobile-friendly, with a layout that adapts to smaller screens.
 
-## Content Architecture
+## How It Works
 
-The content in the `StrategyContent` repository is organized using a TOFU/MOFU/BOFU (Top/Middle/Bottom of Funnel) model. The Decap CMS is configured with three main collections to manage this structure:
+The application is a vanilla JavaScript Single-Page Application (SPA) built with three core files:
 
--   **Discover (TOFU)**: Content for the top of the funnel, aimed at attracting a wide audience. Managed in the `src/pages/discover/` directory.
--   **Consider (MOFU)**: Content for the middle of the funnel, for users who are considering their options. Managed in the `src/pages/consider/` directory.
--   **Get (BOFU)**: Content for the bottom of the funnel, for users who are ready to convert or take action. Managed in the `src/pages/get/` directory.
+- `index.html`: The main entry point for the application. It defines the UI structure and loads the necessary scripts.
+- `editor.css`: Contains all styling for the application, including responsive rules.
+- `editor.js`: The heart of the application, containing all logic for authentication, GitHub API communication, form generation, and event handling.
+- `callback.html`: A simple page that handles the final step of the OAuth redirect, securely passing the authentication token from the auth popup back to the main application.
 
 ## Configuration
 
-The main configuration file is `admin/config.yml`. This file defines the backend connection, media storage, and all content collections and their fields. Any changes to the content model or editor interface should be made in this file.
+The entire structure of the content, including collections, fields, and nested objects, is defined in `admin/config.yml`. To modify the fields available in the editor, you only need to edit this YAML file.
 
-### Frontmatter
+## Technology Stack
 
-The `StrategyContent` repository uses standard YAML frontmatter in its `.astro` files. The Decap CMS is configured to read and write this format directly. A pre-build script in the `StrategyContent` repository handles the conversion to the format required by the Astro build process.
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6+)
+- **Libraries**:
+  - `js-yaml`: For parsing and stringifying YAML frontmatter.
+  - `TinyMCE`: For the WYSIWYG rich text editor.
