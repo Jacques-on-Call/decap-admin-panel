@@ -34,6 +34,18 @@ The entire structure of the content, including collections, fields, and nested o
   - `js-yaml`: For parsing and stringifying YAML frontmatter.
   - `TinyMCE`: For the WYSIWYG rich text editor.
 
+## Development Workflow
+
+This project uses a sandbox environment for development. Changes are not live until they are committed and deployed.
+
+1.  **Branching:** All new work should be done on a dedicated branch. The preferred naming convention is `yymmdd-name` (e.g., `250912-jules`).
+2.  **Committing:** Once changes are ready for testing, they should be committed to the branch with a descriptive message.
+3.  **Pull Request:** A pull request should be created from the branch to `main`.
+4.  **Deployment:** After the pull request is reviewed and merged into the `main` branch, the changes are automatically deployed and become live on `admin.strategycontent.agency`.
+
+## System Architecture Notes
+
+*   **Authentication Service (`auth.strategycontent.agency`):** The GitHub authentication is proxied through a service running on Cloudflare. This service holds the GitHub OAuth App's client secret and manages the token exchange. The configuration for this service is stored in Cloudflare and is mirrored in the `.env` file in this repository for reference.
 
 Here is the summary of our progress, the issues we've faced, and where we are currently stuck.
 
@@ -63,3 +75,27 @@ Project Summary for Third Opinion
 * Is it a Browser Security Policy? Could a strict Cross-Origin-Opener-Policy(COOP) or Cross-Origin-Embedder-Policy (COEP) be preventing window.opener from being accessed in the callback page, even though they share an origin? This seems unlikely for same-origin, but we are running out of options.
 * Is there a detail in the original decap-cms.js flow that we are missing? The original setup worked by simply loading this script. Is it possible it performs an action other than a simple postMessage that we are not accounting for? For example, does it set a cookie that the main page then reads? (The user's last network log showed a _clck cookie, though its origin is unclear).
 I have exhausted all standard patterns for this authentication flow. Any insight into what might be uniquely configured in this user's setup would be immensely helpful.
+
+---
+
+## Debugging Journal (As of 2025-09-12)
+
+This section documents the ongoing investigation into the authentication issue.
+
+### New Discoveries
+
+1.  **Critical Error Message:** The user reported seeing a new error message from the GitHub popup: `"Be careful! The redirect_uri is not associated with this application."` This is a major breakthrough. It indicates a mismatch between the `redirect_uri` sent by our application and the URI configured in the GitHub OAuth App settings. The application is sending `${window.location.origin}/callback.html`. This exact URL must be present in the GitHub App's "Authorization callback URL" list.
+
+2.  **`postMessage` Mismatch:** A code review revealed a second likely issue. `editor.js` expects a message from the callback popup in a specific string format (`"authorization:github:success:{...}"`), but `callback.html` is sending a JSON object (`{"type":"authorization_complete",...}`). This communication mismatch would prevent the login from succeeding even after the `redirect_uri` issue is fixed.
+
+### Current Strategy
+
+To address these findings, the following steps are being taken:
+
+1.  **Auth Debugger:** A new file, `auth-flow-debugger.html`, has been created in the repository. This tool, based on a script provided by the user, will allow for systematic testing of the entire authentication flow.
+
+2.  **Diagnosis:** The debugger will be used to reliably reproduce and confirm the `redirect_uri` mismatch error.
+
+3.  **Resolution Path:**
+    *   First, the `redirect_uri` issue will be resolved by providing the user with the correct URL to add to their GitHub App settings.
+    *   Second, the `postMessage` bug will be fixed by modifying `callback.html` to send the message in the format `editor.js` expects.
