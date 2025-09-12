@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error loading editor configuration:', error); }
     }
 
-    // --- AUTHENTICATION (Solution from DeepSeek) ---
+    // --- AUTHENTICATION (Enhanced Solution) ---
     function handleAuthentication() {
         accessToken = localStorage.getItem('github_token');
         const messageHandler = (event) => {
@@ -142,7 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authPopup && authPopup.closed) {
                 clearInterval(popupCheck);
                 if (!accessToken) {
-                    showToast('Authentication was canceled', 'info');
+                    setTimeout(() => {
+                        // Re-check token, as it might have been set but UI not updated
+                        const storedToken = localStorage.getItem('github_token');
+                        if (!storedToken) showToast('Authentication was canceled.', 'info');
+                    }, 500);
                 }
             }
         }, 500);
@@ -167,6 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
             skin: 'oxide',
             init_instance_callback: function(editor) {
                 console.log('Editor initialized:', editor.id);
+                editor.setMode('design');
+            },
+            setup: function(editor) {
+                editor.on('init', function() {
+                    console.log('TinyMCE editor initialized successfully');
+                });
             }
         }).catch(error => {
             console.error('TinyMCE initialization error:', error);
@@ -407,7 +417,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeMainApp() {
         await loadEditorConfig();
         if (editorConfig) {
-            // Initial UI update before auth check
             updateUI();
         } else {
             document.getElementById('app-container').innerHTML = '<h1 style="color: red;">Could not load editor configuration.</h1>';
