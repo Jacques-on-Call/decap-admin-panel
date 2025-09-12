@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Flow Debugger</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 10px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #0969da;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0550ae; }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>GitHub OAuth Flow Debugger</h1>
+
+    <div class="debug-section">
+        <h3>Step 1: Test Auth Service Response</h3>
+        <p>First, let's see what happens when we call your auth service directly:</p>
+        <button onclick="testAuthService()">Test Auth Service</button>
+        <div id="auth-test-result" class="log"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Step 2: Debug Popup Flow</h3>
+        <p>This will open the auth popup but keep it open longer so we can inspect it:</p>
+        <button onclick="debugAuthPopup()">Open Debug Auth Popup</button>
+        <button onclick="closeDebugPopup()">Close Debug Popup</button>
+        <div id="popup-debug-log" class="log"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Step 3: Test Direct GitHub OAuth</h3>
+        <p>Let's try GitHub's OAuth directly to see if the issue is with your auth service:</p>
+        <button onclick="testDirectGitHubOAuth()">Test Direct GitHub OAuth</button>
+        <div id="github-test-result" class="log"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Step 4: Message Listener Test</h3>
+        <p>Test if postMessage is working at all:</p>
+        <button onclick="testPostMessage()">Test PostMessage</button>
+        <div id="message-test-result" class="log"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Debug Log</h3>
+        <div id="debug-log" class="log"></div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            AUTH_URL: 'https://auth.strategycontent.agency/auth',
+            CLIENT_ID: 'Ov23li6LEsxbtoV7ITp1',
+            REDIRECT_URI: `${window.location.origin}/callback.html`
+        };
+
+        let debugPopup = null;
+        const debugLog = document.getElementById('debug-log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            debugLog.textContent += logMessage;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+
+        // Test 1: Auth Service Response
+        async function testAuthService() {
+            const resultDiv = document.getElementById('auth-test-result');
+            log('Testing auth service...');
+
+            try {
+                const authUrl = `${CONFIG.AUTH_URL}?client_id=${CONFIG.CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}`;
+                log(`Auth URL: ${authUrl}`);
+
+                // Try to fetch the auth service (this will likely fail due to CORS, but we'll see the response)
+                const response = await fetch(authUrl, { method: 'HEAD' });
+                resultDiv.textContent = `Auth service responded with status: ${response.status}`;
+                log(`Auth service status: ${response.status}`);
+            } catch (error) {
+                resultDiv.textContent = `Error testing auth service: ${error.message}`;
+                log(`Auth service error: ${error.message}`);
+            }
+        }
+
+        // Test 2: Debug Popup (keeps it open)
+        function debugAuthPopup() {
+            const resultDiv = document.getElementById('popup-debug-log');
+            log('Opening debug auth popup...');
+
+            const authUrl = `${CONFIG.AUTH_URL}?client_id=${CONFIG.CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}`;
+
+            debugPopup = window.open(authUrl, 'debugAuth', 'width=600,height=800,left=100,top=100');
+
+            if (!debugPopup) {
+                resultDiv.textContent = 'Failed to open popup - popup blocker may be active';
+                log('Popup blocked');
+                return;
+            }
+
+            // Monitor popup
+            const checkInterval = setInterval(() => {
+                try {
+                    if (debugPopup.closed) {
+                        clearInterval(checkInterval);
+                        resultDiv.textContent += '\nPopup was closed';
+                        log('Debug popup closed');
+                        return;
+                    }
+
+                    // Try to read popup URL (will fail if cross-origin)
+                    try {
+                        const popupUrl = debugPopup.location.href;
+                        resultDiv.textContent = `Popup URL: ${popupUrl}`;
+                        log(`Popup URL: ${popupUrl}`);
+
+                        // Check if we're on the callback page
+                        if (popupUrl.includes('callback.html')) {
+                            log('Popup reached callback page!');
+                            resultDiv.textContent += '\n✓ Popup reached callback page';
+                        }
+                    } catch (e) {
+                        // Expected for cross-origin
+                    }
+                } catch (e) {
+                    log(`Popup monitoring error: ${e.message}`);
+                }
+            }, 1000);
+
+            resultDiv.textContent = 'Debug popup opened. Check the popup window and this log for updates.';
+        }
+
+        function closeDebugPopup() {
+            if (debugPopup && !debugPopup.closed) {
+                debugPopup.close();
+                log('Debug popup closed manually');
+            }
+        }
+
+        // Test 3: Direct GitHub OAuth
+        function testDirectGitHubOAuth() {
+            const resultDiv = document.getElementById('github-test-result');
+            log('Testing direct GitHub OAuth...');
+
+            const directGitHubUrl = `https://github.com/login/oauth/authorize?client_id=${CONFIG.CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=repo&state=direct_test`;
+
+            resultDiv.textContent = `Direct GitHub URL: ${directGitHubUrl}`;
+            log(`Direct GitHub URL: ${directGitHubUrl}`);
+
+            // Open in new tab instead of popup for easier debugging
+            window.open(directGitHubUrl, '_blank');
+        }
+
+        // Test 4: PostMessage Test
+        function testPostMessage() {
+            const resultDiv = document.getElementById('message-test-result');
+            log('Testing postMessage functionality...');
+
+            // Create a test popup
+            const testPopup = window.open('', 'testPopup', 'width=400,height=300');
+
+            if (!testPopup) {
+                resultDiv.textContent = 'Failed to open test popup';
+                log('Test popup blocked');
+                return;
+            }
+
+            // Write test content to popup
+            testPopup.document.write(`
+                <html>
+                <head><title>PostMessage Test</title></head>
+                <body>
+                    <h3>PostMessage Test</h3>
+                    <button onclick="sendTestMessage()">Send Test Message</button>
+                    <script>
+                        function sendTestMessage() {
+                            if (window.opener) {
+                                window.opener.postMessage(JSON.stringify({
+                                    type: 'test_message',
+                                    data: 'Hello from popup!',
+                                    timestamp: new Date().toISOString()
+                                }), '*');
+                                document.body.innerHTML += '<p>Message sent!</p>';
+                            } else {
+                                document.body.innerHTML += '<p>No window.opener!</p>';
+                            }
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+
+            resultDiv.textContent = 'Test popup opened. Click "Send Test Message" in the popup window.';
+            log('PostMessage test popup opened');
+
+            // Close popup after 10 seconds
+            setTimeout(() => {
+                if (!testPopup.closed) {
+                    testPopup.close();
+                }
+            }, 10000);
+        }
+
+        // Listen for test messages
+        window.addEventListener('message', function(event) {
+            log(`Received message: ${JSON.stringify(event.data)}`);
+
+            if (event.data.type === 'test_message') {
+                const resultDiv = document.getElementById('message-test-result');
+                resultDiv.textContent += `\n✓ Received test message: ${event.data.data}`;
+                log('✓ PostMessage test successful!');
+            }
+        });
+
+        // Initialize
+        log('Auth Flow Debugger initialized');
+        log(`Window origin: ${window.location.origin}`);
+        log(`Redirect URI: ${CONFIG.REDIRECT_URI}`);
+    </script>
+</body>
+</html>
