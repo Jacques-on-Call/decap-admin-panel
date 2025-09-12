@@ -82,52 +82,36 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error loading editor configuration:', error); }
     }
 
-    // --- AUTHENTICATION (Enhanced Solution) ---
+    // --- AUTHENTICATION (Final Fix) ---
     function handleAuthentication() {
-        accessToken = localStorage.getItem('github_token');
         const messageHandler = (event) => {
-            if (event.origin !== window.location.origin) {
-                console.warn(`Message from untrusted origin '${event.origin}' was ignored.`);
-                return;
-            }
-            console.log('Received message:', event.data);
-            try {
-                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                if (data.type === 'authorization_complete' && data.token) {
-                    accessToken = data.token;
-                    localStorage.setItem('github_token', accessToken);
-                    showToast('Logged in successfully!', 'success');
-                    updateUI();
-                    if (authPopup) {
-                        authPopup.close();
-                        authPopup = null;
+            if (typeof event.data === 'string' && event.data.startsWith('authorization:github:success:')) {
+                try {
+                    const jsonData = event.data.substring('authorization:github:success:'.length);
+                    const data = JSON.parse(jsonData);
+
+                    if (data.token) {
+                        accessToken = data.token;
+                        localStorage.setItem('github_token', accessToken);
+                        showToast('Logged in successfully!', 'success');
+                        updateUI();
+                        if (authPopup) authPopup.close();
+                        window.removeEventListener('message', messageHandler);
                     }
-                    window.removeEventListener('message', messageHandler);
-                } else if (data.type === 'authorization_error') {
-                    showToast(`Authentication failed: ${data.error}`, 'error');
-                    console.error('Auth error:', data.error);
+                } catch (e) {
+                    console.error('Could not parse auth message:', e);
+                    showToast('Authentication failed during token parsing.', 'error');
                 }
-            } catch (e) {
-                console.error('Could not parse auth message:', e, 'Raw data:', event.data);
+            } else if (typeof event.data === 'string' && event.data.startsWith('authorization:github:error:')) {
+                showToast('Authentication failed. Please try again.', 'error');
+                console.error('Auth error message received:', event.data);
             }
         };
-        window.addEventListener('message', messageHandler);
-        checkUrlHashForToken();
-    }
 
-    function checkUrlHashForToken() {
-        const hash = window.location.hash;
-        if (hash && hash.includes('access_token')) {
-            const params = new URLSearchParams(hash.substring(1));
-            const token = params.get('access_token');
-            if (token) {
-                accessToken = token;
-                localStorage.setItem('github_token', accessToken);
-                window.history.replaceState({}, document.title, window.location.pathname);
-                updateUI();
-                showToast('Logged in successfully!', 'success');
-            }
-        }
+        window.addEventListener('message', messageHandler);
+
+        accessToken = localStorage.getItem('github_token');
+        updateUI();
     }
 
     function redirectToGitHubAuth() {
@@ -138,18 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const left = (window.screen.width / 2) - (popupWidth / 2);
         const top = (window.screen.height / 2) - (popupHeight / 2);
         authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
-        const popupCheck = setInterval(() => {
-            if (authPopup && authPopup.closed) {
-                clearInterval(popupCheck);
-                if (!accessToken) {
-                    setTimeout(() => {
-                        // Re-check token, as it might have been set but UI not updated
-                        const storedToken = localStorage.getItem('github_token');
-                        if (!storedToken) showToast('Authentication was canceled.', 'info');
-                    }, 500);
-                }
-            }
-        }, 500);
     }
 
     function logout() {
@@ -169,18 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
             menubar: false, statusbar: false, autoresize_bottom_margin: 20,
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }',
             skin: 'oxide',
-            init_instance_callback: function(editor) {
-                console.log('Editor initialized:', editor.id);
-                editor.setMode('design');
-            },
-            setup: function(editor) {
-                editor.on('init', function() {
-                    console.log('TinyMCE editor initialized successfully');
-                });
-            }
+            init_instance_callback: (editor) => editor.setMode('design')
         }).catch(error => {
             console.error('TinyMCE initialization error:', error);
-            showToast('Editor initialization failed. Please check your API key.', 'error');
+            showToast('Editor initialization failed.', 'error');
         });
     }
 
@@ -427,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (accessToken) {
             loginContainer.style.display = 'none';
             appContainer.style.display = 'block';
-            renderFileBrowser('');
+            if(editorConfig) renderFileBrowser('');
         } else {
             loginContainer.style.display = 'block';
             appContainer.style.display = 'none';
