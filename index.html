@@ -4,10 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Editor</title>
-    <link rel="stylesheet" href="editor.css?v=2">
+    <link rel="stylesheet" href="editor.css?v=3">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
     <!-- Ensure this URL has the correct API key -->
     <script src="https://cdn.tiny.cloud/1/w01ntc48o7kxzwys5kxk0gibj7s4lysx998e1rdgb1tjhm6y/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+    <style>
+        #debug-panel {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: calc(100% - 20px);
+            max-width: 400px;
+            background: #222;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            z-index: 9999;
+            opacity: 0.8;
+        }
+        #debug-panel h4 {
+            margin: 0;
+            padding: 5px;
+            background: #333;
+            border-bottom: 1px solid #444;
+        }
+        #debug-output {
+            padding: 5px;
+            height: 150px;
+            overflow-y: scroll;
+        }
+        #debug-output div {
+            border-bottom: 1px solid #333;
+            padding-bottom: 2px;
+            margin-bottom: 2px;
+        }
+        #debug-output .error { color: #f66; }
+        #debug-output .success { color: #6f6; }
+    </style>
 </head>
 <body>
 
@@ -48,6 +83,11 @@
         </div>
     </div>
 
-    <script src="editor.js?v=2"></script>
+    <div id="debug-panel">
+        <h4>Debug Log</h4>
+        <div id="debug-output"></div>
+    </div>
+
+    <script src="editor.js?v=3"></script>
 </body>
 </html>

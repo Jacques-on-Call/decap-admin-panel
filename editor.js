@@ -27,6 +27,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFile = { frontmatter: null, body: null, sha: null };
     let authPopup = null;
 
+    // --- DEBUG UTILITY ---
+    const debugOutput = document.getElementById('debug-output');
+    function logToScreen(message, type = 'info') {
+        console.log(`[DEBUG|${type}]`, message);
+        if (debugOutput) {
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugOutput.prepend(entry);
+        }
+    }
+
     // --- GITHUB API CLIENT ---
     const github = {
         async fetch(endpoint, options = {}) {
@@ -81,39 +93,59 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error loading editor configuration:', error); }
     }
 
-    // --- AUTHENTICATION (Final Fix) ---
+    // --- AUTHENTICATION (Final Fix with Debugging) ---
     function handleAuthentication() {
+        logToScreen('Authentication handler initiated.');
         const messageHandler = (event) => {
-            if (typeof event.data === 'string' && event.data.startsWith('authorization:github:success:')) {
-                try {
-                    const jsonData = event.data.substring('authorization:github:success:'.length);
-                    const data = JSON.parse(jsonData);
+            // We only care about messages from our own origin.
+            if (event.origin !== window.location.origin) {
+                logToScreen(`Ignoring message from different origin: ${event.origin}`, 'info');
+                return;
+            }
 
-                    if (data.token) {
-                        accessToken = data.token;
-                        localStorage.setItem('github_token', accessToken);
-                        showToast('Logged in successfully!', 'success');
-                        updateUI();
-                        if (authPopup) authPopup.close();
-                        window.removeEventListener('message', messageHandler);
+            logToScreen(`Message received. Raw data: ${JSON.stringify(event.data)}`);
+
+            if (typeof event.data === 'string' && event.data.startsWith('authorization:github:')) {
+                if (event.data.startsWith('authorization:github:success:')) {
+                    try {
+                        const jsonData = event.data.substring('authorization:github:success:'.length);
+                        const data = JSON.parse(jsonData);
+
+                        if (data.token) {
+                            accessToken = data.token;
+                            localStorage.setItem('github_token', accessToken);
+                            logToScreen('Token parsed and stored successfully.', 'success');
+                            showToast('Logged in successfully!', 'success');
+                            updateUI();
+                            if (authPopup) authPopup.close();
+                            window.removeEventListener('message', messageHandler);
+                        }
+                    } catch (e) {
+                        logToScreen(`Could not parse auth message: ${e.message}`, 'error');
+                        showToast('Authentication failed during token parsing.', 'error');
                     }
-                } catch (e) {
-                    console.error('Could not parse auth message:', e);
-                    showToast('Authentication failed during token parsing.', 'error');
+                } else if (event.data.startsWith('authorization:github:error:')) {
+                    logToScreen(`Auth error message received: ${event.data}`, 'error');
+                    showToast('Authentication failed. Please try again.', 'error');
                 }
-            } else if (typeof event.data === 'string' && event.data.startsWith('authorization:github:error:')) {
-                showToast('Authentication failed. Please try again.', 'error');
-                console.error('Auth error message received:', event.data);
+            } else {
+                 logToScreen('Received message was not a valid auth string.', 'info');
             }
         };
 
         window.addEventListener('message', messageHandler);
 
         accessToken = localStorage.getItem('github_token');
+        if (accessToken) {
+            logToScreen('Found existing token in localStorage.');
+        } else {
+            logToScreen('No existing token found.');
+        }
         updateUI();
     }
 
     function redirectToGitHubAuth() {
+        logToScreen('Login button clicked. Opening auth popup...'); // <-- ADD THIS LINE
         const redirectUri = `${window.location.origin}/callback.html`;
         // Bypass the faulty proxy and go directly to GitHub
         const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`;
