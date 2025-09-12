@@ -2,44 +2,12 @@
 <html>
 <head>
   <title>Authentication Callback</title>
-  <script>
-    // This script is based on the standard decap-cms implicit callback flow.
-    // It is designed to run in a popup window.
-    (function() {
-      // If the opener window is missing, this script can't do anything.
-      if (!window.opener) {
-        return;
-      }
-
-      // The token is expected in the URL hash, e.g., #access_token=...
-      if (window.location.hash) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        const token = params.get('access_token');
-        const error = params.get('error');
-
-        if (token) {
-          // This is the success case.
-          // The data structure { type, token } is a common convention for this flow.
-          const data = {
-            type: 'authorization_complete',
-            token: token
-          };
-          // Send the token to the window that opened this popup.
-          window.opener.postMessage(JSON.stringify(data), window.location.origin);
-        } else if (error) {
-          // This is the error case.
-          const data = {
-            type: 'authorization_error',
-            error: error
-          };
-          window.opener.postMessage(JSON.stringify(data), window.location.origin);
-        }
-      }
-    })();
-  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- This script will handle the postMessage auth flow automatically -->
+  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 </head>
 <body>
-  <p>Authenticating...</p>
-  <p>This window should close automatically. If it does not, please close it manually.</p>
+  Authenticating...
 </body>
 </html>
