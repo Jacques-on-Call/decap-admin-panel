@@ -174,14 +174,15 @@
             }
             testPopup.document.write(`
                 <html><head><title>PostMessage Test</title></head><body><h3>PostMessage Test</h3>
-                <button onclick="sendTestMessage()">Send Test Message</button><script>
+                <button onclick="sendTestMessage()">Send Test Message</button>
+                <script>
                 function sendTestMessage() {
                     if (window.opener) {
                         window.opener.postMessage(JSON.stringify({ type: 'test_message', data: 'Hello from popup!' }), '*');
                         document.body.innerHTML += '<p>Message sent!</p>';
                     } else { document.body.innerHTML += '<p>No window.opener!</p>'; }
                 }
-                </script></body></html>`);
+                <\/script></body></html>`);
             resultDiv.textContent = 'Test popup opened. Click "Send Test Message" in the popup window.';
             log('PostMessage test popup opened');
             setTimeout(() => { if (!testPopup.closed) testPopup.close(); }, 10000);
