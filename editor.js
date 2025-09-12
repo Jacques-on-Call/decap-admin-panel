@@ -55,27 +55,41 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- UTILITIES ---
-    function parseFrontmatter(content) { /* ... (omitted for brevity) ... */ }
-    function showToast(message, type = 'success') { /* ... (omitted for brevity) ... */ }
+    function parseFrontmatter(content) {
+        const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
+        const match = content.match(frontmatterRegex);
+        if (match) {
+            const yaml = match[1];
+            return { frontmatter: jsyaml.load(yaml), body: content.substring(match[0].length) };
+        }
+        return { frontmatter: {}, body: content };
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
 
     // --- CONFIGURATION LOADER ---
-    async function loadEditorConfig() { /* ... (omitted for brevity) ... */ }
+    async function loadEditorConfig() {
+        try {
+            const response = await fetch('admin/config.yml');
+            if (!response.ok) throw new Error('Failed to fetch config.yml');
+            editorConfig = jsyaml.load(await response.text());
+        } catch (error) { console.error('Error loading editor configuration:', error); }
+    }
 
     // --- AUTHENTICATION ---
     function handleAuthentication() {
-        // This listener will handle the message from the popup
         window.addEventListener('message', (event) => {
-            // IMPORTANT: Check the origin of the message for security
             if (event.origin !== window.location.origin) {
-                // In a real app, you might want to be more specific,
-                // but for this auth proxy, same-origin is what we expect.
-                // Or check against `auth.strategycontent.agency`. For now, this is fine.
-                console.warn('Message from untrusted origin ignored:', event.origin);
-                // return; // For now, we are less strict to ensure it works.
+                console.warn(`Message from untrusted origin '${event.origin}' was ignored.`);
+                return;
             }
-
-            if (event.data && typeof event.data === 'string' && event.data.includes('authorization_complete')) {
-                // This is the message from the decap-cms auth flow
+            if (event.data && typeof event.data === 'string' && event.data.includes('authorization')) {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'authorization_complete' && data.token) {
@@ -84,24 +98,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         showToast('Logged in successfully!', 'success');
                         updateUI();
                         if (authPopup) authPopup.close();
+                    } else if (data.type === 'authorization_error') {
+                        throw new Error(data.error);
                     }
                 } catch (e) {
-                    console.error('Could not parse auth message:', e);
+                    console.error('Could not parse auth message or auth failed:', e);
+                    showToast(`Authentication failed: ${e.message}`, 'error');
                 }
             }
         });
-
-        // Check for an existing token on page load
         accessToken = localStorage.getItem('github_token');
         updateUI();
     }
 
     function redirectToGitHubAuth() {
-        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${window.location.origin}${window.location.pathname}`;
+        const redirectUri = `${window.location.origin}/callback.html`;
+        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${redirectUri}`;
         const popupWidth = 600;
         const popupHeight = 800;
-        const left = (screen.width / 2) - (popupWidth / 2);
-        const top = (screen.height / 2) - (popupHeight / 2);
+        const left = (window.screen.width / 2) - (popupWidth / 2);
+        const top = (window.screen.height / 2) - (popupHeight / 2);
         authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
     }
 
@@ -112,24 +128,254 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
     }
 
-    // --- EDITOR FORM RENDERER & DATA COLLECTION (Full logic from previous steps)
-    // ... (This logic is assumed to be here and correct)
+    // --- EDITOR FORM RENDERER & DATA COLLECTION ---
+    function initializeWysiwygEditors() {
+        tinymce.remove('.wysiwyg-editor');
+        tinymce.init({
+            selector: '.wysiwyg-editor',
+            plugins: 'autoresize link lists wordcount',
+            toolbar: 'undo redo | blocks | bold italic | bullist numlist | link removeformat',
+            menubar: false, statusbar: false, autoresize_bottom_margin: 20,
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }'
+        });
+    }
 
-    // --- WORKFLOW LOGIC ---
-    async function handleSave() { /* ... (omitted for brevity) ... */ }
-    function handleCreateNew() { /* ... (omitted for brevity) ... */ }
+    function createFormFields(container, fields, data) {
+        fields.forEach(field => {
+            if (field.widget === 'hidden') return;
+            const fieldWrapper = document.createElement('div');
+            fieldWrapper.className = 'form-field';
+            fieldWrapper.dataset.field = field.name;
+            const label = document.createElement('label');
+            label.textContent = field.label;
+            fieldWrapper.appendChild(label);
+            if (['string', 'text', 'code', 'markdown'].includes(field.widget)) {
+                let input;
+                if (['text', 'code', 'markdown'].includes(field.widget)) {
+                    input = document.createElement('textarea');
+                    input.rows = field.widget === 'code' ? 10 : (field.widget === 'markdown' ? 15 : 3);
+                    if (field.widget === 'markdown') input.classList.add('wysiwyg-editor');
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                }
+                input.value = (data && data[field.name]) || '';
+                fieldWrapper.appendChild(input);
+            } else if (field.widget === 'object') {
+                const fieldset = document.createElement('fieldset');
+                const legend = document.createElement('legend');
+                legend.textContent = field.label;
+                fieldset.appendChild(legend);
+                createFormFields(fieldset, field.fields, (data && data[field.name]) || {});
+                fieldWrapper.appendChild(fieldset);
+            } else if (field.widget === 'list') {
+                const listData = (data && data[field.name]) || [];
+                const listContainer = document.createElement('div');
+                listContainer.className = 'list-widget-container';
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'list-items-container';
+                listContainer.appendChild(itemsContainer);
+                listData.forEach((itemData, index) => {
+                    const itemTypeConfig = field.types.find(type => type.name === itemData.type);
+                    if (itemTypeConfig) {
+                        const itemFieldset = document.createElement('fieldset');
+                        itemFieldset.className = 'list-item-fieldset';
+                        itemFieldset.dataset.type = itemData.type;
+                        const header = document.createElement('div');
+                        header.className = 'list-item-header';
+                        const legend = document.createElement('legend');
+                        legend.textContent = `${itemTypeConfig.label} #${index + 1}`;
+                        header.appendChild(legend);
+                        const controls = document.createElement('div');
+                        controls.className = 'list-item-controls';
+                        const removeBtn = document.createElement('button'); removeBtn.textContent = 'Remove'; removeBtn.className = 'remove-btn';
+                        removeBtn.onclick = () => { listData.splice(index, 1); renderEditorForm(); };
+                        const moveUpBtn = document.createElement('button'); moveUpBtn.textContent = 'Up'; moveUpBtn.className = 'move-btn';
+                        moveUpBtn.onclick = () => { if (index > 0) { [listData[index], listData[index - 1]] = [listData[index - 1], listData[index]]; renderEditorForm(); } };
+                        const moveDownBtn = document.createElement('button'); moveDownBtn.textContent = 'Down'; moveDownBtn.className = 'move-btn';
+                        moveDownBtn.onclick = () => { if (index < listData.length - 1) { [listData[index], listData[index + 1]] = [listData[index + 1], listData[index]]; renderEditorForm(); } };
+                        controls.append(moveUpBtn, moveDownBtn, removeBtn);
+                        header.appendChild(controls);
+                        itemFieldset.appendChild(header);
+                        createFormFields(itemFieldset, itemTypeConfig.fields, itemData);
+                        itemsContainer.appendChild(itemFieldset);
+                    }
+                });
+                const addControls = document.createElement('div');
+                addControls.className = 'list-add-controls';
+                const typeSelect = document.createElement('select');
+                field.types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.name;
+                    option.textContent = type.label;
+                    typeSelect.appendChild(option);
+                });
+                const addBtn = document.createElement('button'); addBtn.textContent = 'Add Section';
+                addBtn.onclick = () => {
+                    const selectedType = typeSelect.value;
+                    const typeConfig = field.types.find(t => t.name === selectedType);
+                    const newItem = { type: selectedType };
+                    typeConfig.fields.forEach(f => { newItem[f.name] = f.default || ''; });
+                    listData.push(newItem);
+                    renderEditorForm();
+                };
+                addControls.append(typeSelect, addBtn);
+                listContainer.appendChild(addControls);
+                fieldWrapper.appendChild(listContainer);
+            }
+            container.appendChild(fieldWrapper);
+        });
+    }
 
-    // --- UI & APP LOGIC ---
-    async function initializeMainApp() { /* ... (omitted for brevity) ... */ }
-    function updateUI() {
-        if (accessToken) {
-            loginContainer.style.display = 'none';
-            appContainer.style.display = 'block';
-            initializeMainApp();
-        } else {
-            loginContainer.style.display = 'block';
-            appContainer.style.display = 'none';
+    function readFormFields(container, fields) {
+        const data = {};
+        fields.forEach(field => {
+            if (field.widget === 'hidden') { data[field.name] = field.default; return; }
+            const fieldWrapper = container.querySelector(`[data-field="${field.name}"]`);
+            if (!fieldWrapper) return;
+            if (['string', 'text', 'code', 'markdown'].includes(field.widget)) {
+                const input = fieldWrapper.querySelector('input, textarea');
+                if (field.widget === 'markdown') {
+                    const editor = tinymce.get(input.id);
+                    data[field.name] = editor ? editor.getContent({ format: 'raw' }) : input.value;
+                } else { data[field.name] = input.value; }
+            } else if (field.widget === 'object') {
+                const fieldset = fieldWrapper.querySelector('fieldset');
+                data[field.name] = readFormFields(fieldset, field.fields);
+            } else if (field.widget === 'list') {
+                const listData = [];
+                const itemFieldsets = fieldWrapper.querySelectorAll('.list-item-fieldset');
+                itemFieldsets.forEach(fieldset => {
+                    const itemType = fieldset.dataset.type;
+                    const typeConfig = field.types.find(t => t.name === itemType);
+                    if (typeConfig) {
+                        let itemData = readFormFields(fieldset, typeConfig.fields);
+                        itemData.type = itemType;
+                        listData.push(itemData);
+                    }
+                });
+                data[field.name] = listData;
+            }
+        });
+        return data;
+    }
+
+    function getFormData() {
+        const collectionName = currentPath.split('/')[0];
+        const collection = editorConfig.collections.find(c => c.name === collectionName);
+        if (!collection) return null;
+        return readFormFields(metadataEditorDiv, collection.fields);
+    }
+
+    function renderEditorForm() {
+        metadataEditorDiv.innerHTML = '';
+        const collectionName = currentPath.split('/')[0];
+        const collection = editorConfig.collections.find(c => c.name === collectionName);
+        if (!collection) { metadataEditorDiv.innerHTML = '<p style="color: red;">Could not find collection configuration.</p>'; return; }
+        createFormFields(metadataEditorDiv, collection.fields, currentFile.frontmatter);
+        setTimeout(() => initializeWysiwygEditors(), 0);
+    }
+
+    async function renderFileBrowser(path) {
+        currentPath = path;
+        metadataEditorDiv.innerHTML = '';
+        currentFile = { frontmatter: null, body: null, sha: null };
+        currentPathSpan.textContent = `/${path}`;
+        fileListDiv.innerHTML = '<p>Loading...</p>';
+        backBtn.style.display = path ? 'inline-block' : 'none';
+        try {
+            let items = await github.getRepoContents(path);
+            fileListDiv.innerHTML = '';
+            const allowedDirs = editorConfig.collections.map(c => c.name);
+            if (path === '') items = items.filter(item => item.type === 'dir' && allowedDirs.includes(item.name));
+            items.sort((a, b) => a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1);
+            if (items.length === 0) fileListDiv.innerHTML = '<p>No files in this directory.</p>';
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.textContent = `${item.type === 'dir' ? '📁' : '📄'} ${item.name}`;
+                el.className = 'file-item';
+                el.onclick = () => handleItemClick(item);
+                fileListDiv.appendChild(el);
+            });
+        } catch (error) { console.error('Failed to render file browser:', error); fileListDiv.innerHTML = '<p style="color: red;">Error loading content.</p>'; }
+    }
+
+    async function handleItemClick(item) {
+        if (item.type === 'dir') { renderFileBrowser(item.path); }
+        else {
+            try {
+                const fileData = await github.getFileContent(item.path);
+                const { frontmatter, body } = parseFrontmatter(atob(fileData.content));
+                currentFile = { frontmatter, body, sha: fileData.sha };
+                renderEditorForm();
+                if (window.innerWidth <= 768) document.body.classList.add('mobile-show-editor');
+            } catch (error) { console.error('Error loading file content:', error); showToast('Could not load file content.', 'error'); }
         }
+    }
+
+    function handleBackClick() { const pathParts = currentPath.split('/'); pathParts.pop(); renderFileBrowser(pathParts.join('/')); }
+
+    async function handleSave() {
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+        try {
+            const verb = currentFile.sha ? 'update' : 'create';
+            const commitMessage = prompt(`Enter a commit message to ${verb} this file:`, `feat: ${verb} ${currentPath}`);
+            if (!commitMessage) { saveBtn.textContent = 'Save Content'; saveBtn.disabled = false; return; }
+
+            const frontmatter = getFormData();
+            const yamlFrontmatter = jsyaml.dump(frontmatter, { noRefs: true, skipInvalid: true });
+            const fullContent = `---\n${yamlFrontmatter}---\n${currentFile.body || ''}`;
+
+            const response = await github.commitFile(currentPath, fullContent, commitMessage, currentFile.sha);
+
+            currentFile.sha = response.content.sha;
+            showToast(`File ${verb}d successfully!`, 'success');
+            const pathParts = currentPath.split('/');
+            pathParts.pop();
+            renderFileBrowser(pathParts.join('/'));
+
+        } catch (error) {
+            console.error("Failed to save file:", error);
+            showToast(`Error saving file: ${error.message}`, 'error');
+        } finally {
+            saveBtn.textContent = 'Save Content';
+            saveBtn.disabled = false;
+        }
+    }
+
+    function handleCreateNew() {
+        const collections = editorConfig.collections.map(c => c.name);
+        const collectionName = prompt(`Which collection? (${collections.join(', ')})`);
+        if (!collectionName || !collections.includes(collectionName)) {
+            return showToast('Invalid collection name.', 'error');
+        }
+
+        let fileName = prompt("Enter a file name (e.g., my-new-page.astro):");
+        if (!fileName) return;
+        if (!fileName.endsWith('.astro')) fileName += '.astro';
+
+        currentPath = `${collectionName}/${fileName}`;
+        const collection = editorConfig.collections.find(c => c.name === collectionName);
+        const defaultFrontmatter = {};
+        collection.fields.forEach(field => {
+            if (field.default) defaultFrontmatter[field.name] = field.default;
+        });
+
+        currentFile = { frontmatter: defaultFrontmatter, body: '\n<!-- Add your page content here if not using sections -->', sha: null };
+        renderEditorForm();
+        if (window.innerWidth <= 768) document.body.classList.add('mobile-show-editor');
+    }
+
+    async function initializeMainApp() {
+        await loadEditorConfig();
+        if (editorConfig) { renderFileBrowser(''); }
+        else { document.getElementById('app-container').innerHTML = '<h1 style="color: red;">Could not load editor configuration.</h1>'; }
+    }
+
+    function updateUI() {
+        if (accessToken) { loginContainer.style.display = 'none'; appContainer.style.display = 'block'; initializeMainApp(); }
+        else { loginContainer.style.display = 'block'; appContainer.style.display = 'none'; }
     }
 
     // --- EVENT LISTENERS ---
@@ -144,7 +390,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INITIALIZATION ---
     handleAuthentication();
 });
-// NOTE: I have omitted the full implementation of many functions for brevity.
-// The key change is the complete rewrite of the authentication logic to use
-// window.open() and a postMessage listener, instead of a full page redirect.
-// I've made an educated guess on the message format based on decap-cms standards.
