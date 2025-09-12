@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Content Manager</title>
   <style>
-    /* Inline critical mobile styles to ensure they load */
-    .mobile-ux-enabled { display: none; }
+    /* Critical mobile styles that load immediately */
+    body {
+      overflow-x: hidden;
+    }
     @media (max-width: 768px) {
-      .mobile-ux-enabled { display: block; }
+      #nc-root > div > div:first-child > div:first-child {
+        display: none !important;
+      }
+      #nc-root > div > div:first-child > div:last-child {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
     }
   </style>
 </head>
@@ -16,16 +24,21 @@
   <!-- Decap CMS script -->
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   
-  <!-- Load CSS after CMS to override styles -->
-  <link rel="stylesheet" href="mobile-ux.css">
-  
-  <!-- Load JS with delay to ensure CMS is initialized -->
+  <!-- Load mobile UX enhancements after CMS -->
   <script>
+    // Wait for CMS to initialize
     setTimeout(function() {
-      var script = document.createElement('script');
-      script.src = 'mobile-ux.js';
-      document.body.appendChild(script);
-    }, 1000);
+      // Add mobile UX CSS
+      var cssLink = document.createElement('link');
+      cssLink.rel = 'stylesheet';
+      cssLink.href = 'mobile-ux.css';
+      document.head.appendChild(cssLink);
+      
+      // Add mobile UX JS
+      var jsScript = document.createElement('script');
+      jsScript.src = 'mobile-ux.js';
+      document.body.appendChild(jsScript);
+    }, 2000);
   </script>
 </body>
 </html>
