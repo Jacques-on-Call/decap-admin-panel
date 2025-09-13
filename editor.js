@@ -82,60 +82,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTHENTICATION ---
-    function handleAuthentication() {
-        accessToken = localStorage.getItem('github_token');
+    async function handleAuthentication() {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const code = params.get('code');
+        const error = params.get('error');
 
-        if (accessToken) {
-            loadTinyMCE();
-        } else {
-            // Listen for the popup's message if we don't have a token
-            window.addEventListener('message', (event) => {
-                // Security check: only accept messages from our own origin
-                if (event.origin !== window.location.origin) {
-                    console.warn(`Ignored message from untrusted origin: ${event.origin}`);
-                    return;
-                }
+        if (error) {
+            showToast(`Authentication failed: ${params.get('error_description') || error}`, 'error');
+            window.history.replaceState({}, document.title, window.location.pathname);
+            updateUI();
+            return;
+        }
 
-                const data = event.data;
-
-                if (data.type === 'github_auth_success' && data.token) {
+        if (code) {
+            try {
+                const response = await fetch(AUTH_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await response.json();
+                if (data.token) {
                     accessToken = data.token;
                     localStorage.setItem('github_token', accessToken);
                     showToast('Logged in successfully!', 'success');
-                    updateUI();
-                    loadTinyMCE();
-                } else if (data.type === 'github_auth_error') {
-                    showToast(`Authentication failed: ${data.error}`, 'error');
+                } else {
+                    throw new Error('No token received from auth service.');
                 }
-            });
+            } catch (e) {
+                console.error('Token exchange failed:', e);
+                showToast('Authentication failed during token exchange.', 'error');
+            } finally {
+                // Clean the URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } else {
+            // No code in URL, check for existing token in localStorage
+            accessToken = localStorage.getItem('github_token');
         }
+
+        if (accessToken) {
+            loadTinyMCE();
+        }
+
         updateUI();
     }
 
     function startAuthentication() {
         const redirectUri = `${window.location.origin}/callback.html`;
-        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        // We go directly to GitHub because the proxy is only for the token exchange
+        const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`;
 
-        const popupWidth = 600;
-        const popupHeight = 800;
-        const left = (window.screen.width / 2) - (popupWidth / 2);
-        const top = (window.screen.height / 2) - (popupHeight / 2);
-
-        const authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
-
-        if (!authPopup) {
-            showToast('Popup blocked. Please allow popups for this site.', 'error');
-            return;
-        }
-
-        const popupCheckInterval = setInterval(() => {
-            if (authPopup.closed) {
-                clearInterval(popupCheckInterval);
-                if (!accessToken) {
-                    showToast('Authentication was canceled.', 'info');
-                }
-            }
-        }, 500);
+        window.open(authUrl, '_blank', 'noopener,noreferrer');
     }
 
     function logout() {
