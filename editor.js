@@ -83,16 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- AUTHENTICATION (with Hello.js) ---
     hello.init({
-        github: {
-            id: OAUTH_CLIENT_ID,
-            oauth: {
-                version: 2,
-                auth: 'https://github.com/login/oauth/authorize',
-                grant: 'https://github.com/login/oauth/access_token'
-            },
-            // Tells hello.js to use our proxy server
-            proxy: AUTH_URL
-        }
+        github: OAUTH_CLIENT_ID
+    }, {
+        redirect_uri: 'callback.html',
+        oauth_proxy: AUTH_URL
     });
 
     function handleLogin(auth) {
@@ -385,6 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const githubSession = hello.getAuthResponse('github');
         if (githubSession && githubSession.access_token) {
             accessToken = githubSession.access_token;
+            loadTinyMCE();
         }
         updateUI();
     }
