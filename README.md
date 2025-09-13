@@ -10,7 +10,7 @@ The configuration in this repository (`admin/config.yml`) is set up to read from
 
 ## Mobile-First Editor Configuration
 
-To achieve a clean, "Google Docs-like" editing experience on mobile devices, the `config.yml` has been intentionally simplified. Instead of using complex, nested fields which clutter the UI on small screens, the configuration now defines a minimal set of fields, focusing on a single rich-text editor for content.
+The goal of this project is to achieve a clean, "Google Docs-like" editing experience on mobile devices. The strategy is to use a simplified `config.yml` that defines a minimal set of fields (e.g., `title` and `body`) to avoid the cluttered UI that complex, nested fields create on small screens.
 
 This approach leverages the power of the Decap CMS authentication and backend engine while providing a user interface that is simple and effective on any device.
 
@@ -26,4 +26,6 @@ This section serves as a record of the development journey and key architectural
 
 *   **Attempt #2: Architectural Pivot Discussion:** After the CSS approach failed, we considered abandoning Decap entirely to build a custom editor from scratch. This idea was rejected due to the known complexities of building a stable authentication flow from scratch, a problem Decap had already solved.
 
-*   **Final Insight & Solution:** The key insight was that the UI's complexity was a direct result of the complexity in the `config.yml` file. Decap was simply building the "blueprint" it was given. The final, successful solution was to **radically simplify the `config.yml`**. By defining a minimal collection with only a `title` and `body` (`markdown`) field, we instructed the Decap engine to build the simple, clean UI we wanted all along. This approach keeps the robust Decap engine while achieving a fully custom and mobile-friendly user experience.
+*   **Attempt #3: Simplify `config.yml`:** The key insight was that the UI's complexity was a direct result of the complexity in the `config.yml` file. Decap was simply building the "blueprint" it was given. The proposed solution was to **radically simplify the `config.yml`**. By defining a minimal collection with only a `title` and `body` (`markdown`) field, the Decap engine would be instructed to build a simple, clean UI.
+
+*   **Current Strategy (2025-09-13): Combining `decap-cms-alter` with a Simple Config:** While the simplified configuration is key, the core `decap-cms` library still presents mobile rendering challenges. The current strategy combines the simplified config with a more mobile-friendly frontend engine. The `decap-cms` script has been replaced with `decap-cms-alter`, a drop-in replacement aimed at improving the mobile experience. This approach aims to get the best of both worlds: a simple content structure and a responsive editor UI.
