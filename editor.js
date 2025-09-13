@@ -124,6 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             logToScreen('Token parsed and stored successfully.', 'success');
                             showToast('Logged in successfully!', 'success');
                             updateUI();
+                            // Load the editor only after successful authentication
+                            loadTinyMCE();
                             if (authPopup) authPopup.close();
                             window.removeEventListener('message', messageHandler);
                         }
@@ -145,6 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
         accessToken = localStorage.getItem('github_token');
         if (accessToken) {
             logToScreen('Found existing token in localStorage.');
+            // If we're already logged in, we can go ahead and load the editor
+            loadTinyMCE();
         } else {
             logToScreen('No existing token found.');
         }
@@ -167,12 +171,45 @@ document.addEventListener('DOMContentLoaded', () => {
     function logout() {
         localStorage.removeItem('github_token');
         accessToken = null;
-        tinymce.remove();
+        if (window.tinymce) tinymce.remove();
         updateUI();
     }
 
+    // --- TINYMCE DYNAMIC LOADER ---
+    let tinymceLoaded = false;
+    function loadTinyMCE() {
+        if (tinymceLoaded) {
+            // If already loaded, just ensure editors are re-initialized for the new view
+            initializeWysiwygEditors();
+            return;
+        }
+        logToScreen('Starting to load TinyMCE script...');
+        const script = document.createElement('script');
+        // The API key is from the original index.html
+        script.src = 'https://cdn.tiny.cloud/1/w01ntc48o7kxzwys5kxk0gibj7s4lysx998e1rdgb1tjhm6y/tinymce/7/tinymce.min.js';
+        script.referrerPolicy = 'origin';
+        script.onload = () => {
+            logToScreen('TinyMCE script loaded successfully.', 'success');
+            tinymceLoaded = true;
+            // Now that the script is loaded, initialize the editors needed for the current view.
+            initializeWysiwygEditors();
+        };
+        script.onerror = () => {
+            logToScreen('Failed to load TinyMCE script.', 'error');
+            showToast('Failed to load text editor.', 'error');
+        };
+        document.head.appendChild(script);
+    }
+
+
     // --- EDITOR FORM RENDERER & DATA COLLECTION ---
     function initializeWysiwygEditors() {
+        // Don't try to initialize until the script is loaded.
+        if (!tinymceLoaded) {
+            logToScreen('TinyMCE not loaded yet, skipping editor initialization.');
+            return;
+        }
+        logToScreen('Initializing WYSIWYG editors.');
         tinymce.remove('.wysiwyg-editor');
         tinymce.init({
             selector: '.wysiwyg-editor',
@@ -184,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             init_instance_callback: (editor) => editor.setMode('design')
         }).catch(error => {
             console.error('TinyMCE initialization error:', error);
+            logToScreen(`TinyMCE init error: ${error.message}`, 'error');
             showToast('Editor initialization failed.', 'error');
         });
     }
@@ -324,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const collection = editorConfig.collections.find(c => c.name === collectionName);
         if (!collection) { metadataEditorDiv.innerHTML = '<p style="color: red;">Could not find collection configuration.</p>'; return; }
         createFormFields(metadataEditorDiv, collection.fields, currentFile.frontmatter);
-        setTimeout(() => initializeWysiwygEditors(), 0);
+        // The editor will be initialized when the script loads if needed.
+        initializeWysiwygEditors();
     }
 
     async function renderFileBrowser(path) {
