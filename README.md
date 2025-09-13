@@ -10,26 +10,26 @@ The application is a vanilla JavaScript Single-Page Application (SPA) built with
 
 -   `index.html`: The main entry point for the application. It defines the UI structure and loads the necessary scripts.
 -   `editor.css`: Contains all styling for the application, including responsive rules and the minimalist header button styles.
--   `editor.js`: The heart of the application, containing all logic for authentication, GitHub API communication, form generation, and event handling.
--   `callback.html`: A simple page that handles the final step of the OAuth redirect. Loaded in a popup, it receives the temporary auth `code`, exchanges it for a token via the auth proxy, and sends the token back to the main window.
+-   `editor.js`: The heart of the application. It initiates the authentication flow and, on page load, handles the final token exchange. It also contains all logic for GitHub API communication, form generation, and event handling.
+-   `callback.html`: A simple page that acts as a middleman in the OAuth flow. It captures the temporary `code` from GitHub and passes it back to the main application.
 
-## Final Authentication Architecture (Popup Flow)
+## Final Authentication Architecture (Synchronous Redirect Handshake)
 
-The editor uses a standard and robust **Popup-Based Authentication Flow** to securely connect to GitHub. This architecture uses `window.postMessage` to communicate securely between the popup and the main application window.
+To solve a persistent and complex authentication race condition, the editor uses a **Synchronous Redirect Handshake** pattern. This avoids the issues of premature popup closing and ensures all asynchronous token exchange logic happens in the stable main application window.
 
 The flow is as follows:
 
-1.  **Popup Trigger:** When the user clicks "Login with GitHub", the application opens a new popup window using `window.open()`, directing it to the `auth.strategycontent.agency` service.
-2.  **GitHub Authorization:** The user authorizes the application with GitHub within the popup.
-3.  **Redirect to Callback:** After authorization, GitHub redirects the popup window back to our `callback.html` page, including a temporary authorization `code` in the URL.
-4.  **Token Exchange:** The script in `callback.html` sees the `code` and sends it to the `auth.strategycontent.agency` service in a background `POST` request. The service securely exchanges the code for a permanent `access_token` and returns it.
-5.  **`postMessage` to Opener:** The `callback.html` page then uses `window.opener.postMessage` to send the `access_token` securely back to the main editor window. A small delay is included before the popup closes to ensure the message is delivered reliably.
-6.  **Login Complete:** The main editor window listens for this message, validates its origin, stores the token in `localStorage`, and initializes the editor interface.
+1.  **Open Popup:** When the user clicks "Login with GitHub", `editor.js` opens a new tab/popup window directly to the GitHub authorization URL.
+2.  **GitHub Authorization:** The user authorizes the application with GitHub.
+3.  **Redirect to Callback:** After authorization, GitHub redirects the popup to our `callback.html` page, including a temporary authorization `code` in the URL.
+4.  **Redirect Main Window:** The script in `callback.html` immediately takes the `code` and redirects the *original* (opener) window, passing the `code` in the URL hash (e.g., `index.html#code=...`). The popup then closes itself.
+5.  **Token Exchange:** The main `editor.js` script, now reloaded with a `code` in its URL hash, detects the code. It then sends this `code` to the `auth.strategycontent.agency` service in a background `POST` request to be securely exchanged for a permanent `access_token`.
+6.  **Login Complete:** `editor.js` receives the final token, stores it in `localStorage`, cleans the URL hash, and initializes the editor in a fully logged-in state.
 
-To prevent potential interference between third-party scripts and the sensitive auth flow, the TinyMCE editor script is loaded dynamically only *after* authentication is complete.
+To prevent potential interference, the TinyMCE editor script is loaded dynamically only *after* this entire authentication flow is complete.
 
 ## Development Workflow
 
-1.  **Branching:** The preferred naming convention is `yymmdd-"what-are-we-doing"` (e.g., `250912-implement-popup-flow`).
+1.  **Branching:** The preferred naming convention is `yymmdd-"what-are-we-doing"` (e.g., `250912-implement-redirect-flow`).
 2.  **Deployment:** Changes are deployed to `admin.strategycontent.agency` after the pull request is merged into the `main` branch.
 3.  **Cache-Busting:** Due to aggressive caching on mobile browsers, it is critical to append a versioned query string (`?v=X`) to CSS and JS links in `index.html` when making changes.
