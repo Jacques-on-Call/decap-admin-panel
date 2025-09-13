@@ -53,6 +53,38 @@ button:disabled { background-color: var(--grey-color); cursor: not-allowed; }
     border-bottom: 1px solid var(--border-color);
 }
 #main-content { display: flex; height: calc(100vh - 65px); }
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#app-header button {
+    background: none;
+    border: none;
+    color: var(--grey-hover);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#app-header button:hover {
+    background-color: var(--bg-color);
+    color: #111;
+}
+
+#app-header button#logout-btn {
+    color: var(--danger-color);
+}
+#app-header button#logout-btn:hover {
+    background-color: var(--danger-color);
+    color: var(--white-color);
+}
+
 .mobile-controls { display: none; } /* Hide on desktop */
 
 /* --- File Browser Panel --- */
