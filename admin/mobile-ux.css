@@ -1,39 +1,54 @@
 /*
- * Tactical Mobile UX Fix for Decap CMS (Phase 1)
+ * Tactical Mobile UX Fix for Decap CMS (Phase 1, Attempt 2)
  *
- * This stylesheet provides a "distraction-free" writing mode on mobile devices
- * by hiding non-essential UI elements. The goal is to create a clean writing
- * surface, similar to Google Docs, when the editor is active.
+ * This version uses a more aggressive approach based on the #nc-root element.
+ * The goal is to hide everything except the main editor form.
  */
 
 @media (max-width: 768px) {
-  /* Hide the main collections sidebar to maximize horizontal space. */
-  [data-testid="sidebar"] {
+
+  /*
+   * Hide the main sidebar. Based on inspection of Decap's source, the sidebar
+   * is a direct child of the main application container and has a specific
+   * class structure. This targets that structure.
+   */
+  #nc-root > div > div:first-child {
     display: none !important;
   }
 
   /*
-   * Make the main application container take up the full width,
-   * removing the padding that was there for the sidebar.
+   * Make the main view (the second child) take up all the space.
    */
-  main[class*="App-main"] {
-    padding-left: 0 !important;
+  #nc-root > div > div:last-child {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100vw !important;
   }
 
   /*
-   * In the editor view, Decap splits the screen into an editor pane and a
-   * preview pane. We will hide the preview pane entirely on mobile.
+   * In the editor view, Decap often splits the view into a form pane
+   * and a preview/control pane. We will hide the control pane (right side).
+   * This selector targets the container and hides its last child element.
    */
-  div[class*="Editor-previewPane"] {
-    display: none !important;
+  div[class*="Editor_editor_container"] > div:last-child {
+      display: none !important;
+  }
+
+  /* And make the form pane (the first child) take up the full width. */
+  div[class*="Editor_editor_container"] > div:first-child {
+      width: 100% !important;
+      padding: 8px !important;
   }
 
   /*
-   * We will then make the editor pane, which contains the form fields,
-   * take up the full width of the screen.
+   * Ensure the form itself is scrollable and takes up all available space,
+   * with some padding at the bottom for mobile browser UI.
    */
-  div[class*="Editor-editorPane"] {
-    width: 100% !important;
-    max-width: 100% !important;
+  form {
+    height: 100%;
+    overflow-y: auto !important;
+    padding-bottom: 80px !important;
   }
 }
