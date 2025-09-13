@@ -4,26 +4,39 @@
     <meta charset="utf-8">
     <title>Authentication Callback</title>
 <style>
-    body { font-family: monospace; background: #222; color: #eee; margin: 0; padding: 10px; }
-    p { font-size: 16px; }
-    .error { color: #f66; }
+    body { font-family: monospace; background: #222; color: #eee; margin: 10px; font-size: 14px; }
+    #status { padding: 10px; border: 1px solid #555; border-radius: 4px; white-space: pre-wrap; word-break: break-all; margin-top: 15px; }
+    .error { color: #f66; border-color: #f66; }
 </style>
 </head>
 <body>
-    <p id="status">Completing authentication...</p>
+    <h1>Authentication Callback</h1>
+    <p>Processing login, please wait...</p>
+    <div id="status">Status: Initializing...</div>
+
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    try {
         const statusEl = document.getElementById('status');
+        const log = (message, isError = false) => {
+            console.log(message);
+            statusEl.textContent += `\n${message}`;
+            if(isError) statusEl.classList.add('error');
+        };
+
+        log('Script started.');
+
         const queryParams = new URLSearchParams(window.location.search);
+        log(`URL Search Params: ${queryParams.toString()}`);
+
         const code = queryParams.get('code');
         const error = queryParams.get('error');
 
         if (error) {
-            statusEl.textContent = `Authentication Error: ${error}. Redirecting...`;
-            statusEl.className = 'error';
-            setTimeout(() => { window.location.href = '/'; }, 3000);
-        } else if (code) {
-            statusEl.textContent = 'Authentication code received. Exchanging for token...';
+            throw new Error(`GitHub returned an error: ${error} - ${queryParams.get('error_description') || 'No description'}`);
+        }
+
+        if (code) {
+            log('Auth code found. Exchanging for token...');
             const authServiceUrl = 'https://auth.strategycontent.agency/auth';
 
             fetch(authServiceUrl, {
@@ -32,33 +45,41 @@
                 body: JSON.stringify({ code: code })
             })
             .then(response => {
+                log(`Proxy response status: ${response.status}`);
                 if (!response.ok) {
-                    throw new Error(`Token exchange failed with status: ${response.status}`);
+                    // Try to get text from the response to see the error message from the proxy
+                    return response.text().then(text => {
+                        throw new Error(`Token exchange failed with status ${response.status}: ${text}`);
+                    });
                 }
                 return response.json();
             })
             .then(data => {
+                log('Proxy response data: ' + JSON.stringify(data));
                 if (data.token) {
-                    statusEl.textContent = 'Token received successfully! Redirecting to editor...';
-                    // Store the token and redirect to the main page.
+                    log('Token received successfully! Storing token...');
                     localStorage.setItem('github_token', data.token);
+                    log('Token stored. Redirecting to editor...');
                     window.location.href = '/';
                 } else {
                     throw new Error('Proxy response did not contain a token.');
                 }
             })
             .catch(err => {
-                statusEl.textContent = `Error: ${err.message}. Redirecting...`;
-                statusEl.className = 'error';
-                setTimeout(() => { window.location.href = '/'; }, 3000);
+                // This catch handles fetch/network errors or errors thrown from the .then() blocks
+                log(`Token exchange fetch failed: ${err.message}`, true);
+                setTimeout(() => { window.location.href = '/'; }, 5000);
             });
 
         } else {
-            statusEl.textContent = 'Invalid callback: No code or error found. Redirecting...';
-            statusEl.className = 'error';
-            setTimeout(() => { window.location.href = '/'; }, 3000);
+            throw new Error('Invalid callback: No authorization code found in URL.');
         }
-    });
+    } catch (e) {
+        // This is a "can't-fail" catch block for any synchronous errors in the script itself.
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = `A fatal script error occurred on the callback page:\n\nMessage: ${e.message}\n\nStack: ${e.stack}`;
+        statusEl.className = 'error';
+    }
     </script>
 </body>
 </html>
