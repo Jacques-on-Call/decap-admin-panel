@@ -38,7 +38,7 @@ The entire structure of the content, including collections, fields, and nested o
 
 This project uses a sandbox environment for development. Changes are not live until they are committed and deployed.
 
-1.  **Branching:** All new work should be done on a dedicated branch. The preferred naming convention is `yymmdd-"what are we doing"` (e.g., `250912-intrgrating-tinymce-replacing-decap`).
+1.  **Branching:** All new work should be done on a dedicated branch. The preferred naming convention is `yymmdd-name` (e.g., `250912-jules`).
 2.  **Committing:** Once changes are ready for testing, they should be committed to the branch with a descriptive message.
 3.  **Pull Request:** A pull request should be created from the branch to `main`.
 4.  **Deployment:** After the pull request is reviewed and merged into the `main` branch, the changes are automatically deployed and become live on `admin.strategycontent.agency`.
