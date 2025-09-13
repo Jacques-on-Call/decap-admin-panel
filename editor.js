@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURATION ---
+    const AUTH_URL = 'https://auth.strategycontent.agency/auth';
     const OAUTH_CLIENT_ID = 'Ov23li6LEsxbtoV7ITp1';
     const REPO_OWNER = 'Jacques-on-Call';
     const REPO_NAME = 'StrategyContent';
@@ -19,13 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastContainer = document.getElementById('toast-container');
     const mobileShowFilesBtn = document.getElementById('mobile-show-files-btn');
     const mobileShowEditorBtn = document.getElementById('mobile-show-editor-btn');
+    const authModal = document.getElementById('auth-modal');
+    const authIframe = document.getElementById('auth-iframe');
+    const closeModalBtn = document.querySelector('.close-btn');
 
     // --- STATE ---
     let accessToken = null;
     let currentPath = '';
     let editorConfig = null;
     let currentFile = { frontmatter: null, body: null, sha: null };
-    let authPopup = null;
 
     // --- DEBUG UTILITY ---
     const debugOutput = document.getElementById('debug-output');
@@ -93,13 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error loading editor configuration:', error); }
     }
 
-    // --- AUTHENTICATION (Final Fix with Debugging) ---
+    // --- AUTHENTICATION ---
     function handleAuthentication() {
         logToScreen('Authentication handler initiated.');
 
         const allowedOrigins = [
             'https://auth.strategycontent.agency',
-            'https://admin.strategycontent.agency',
             window.location.origin
         ];
 
@@ -122,10 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             localStorage.setItem('github_token', accessToken);
                             logToScreen('Token parsed and stored successfully.', 'success');
                             showToast('Logged in successfully!', 'success');
+                            closeAuthModal();
                             updateUI();
-                            // Load the editor only after successful authentication
                             loadTinyMCE();
-                            if (authPopup) authPopup.close();
                             window.removeEventListener('message', messageHandler);
                         }
                     } catch (e) {
@@ -135,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (event.data.startsWith('authorization:github:error:')) {
                     logToScreen(`Auth error message received: ${event.data}`, 'error');
                     showToast('Authentication failed. Please try again.', 'error');
+                    closeAuthModal();
                 }
             } else {
                  logToScreen('Received message was not a valid auth string.', 'info');
@@ -146,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
         accessToken = localStorage.getItem('github_token');
         if (accessToken) {
             logToScreen('Found existing token in localStorage.');
-            // If we're already logged in, we can go ahead and load the editor
             loadTinyMCE();
         } else {
             logToScreen('No existing token found.');
@@ -154,17 +155,17 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
     }
 
-    function redirectToGitHubAuth() {
-        logToScreen('Login button clicked. Opening auth popup for direct GitHub test...');
+    function startAuthentication() {
+        logToScreen('Login button clicked. Opening auth modal...');
         const redirectUri = `${window.location.origin}/callback.html`;
-        const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`;
+        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        authIframe.src = authUrl;
+        authModal.style.display = 'block';
+    }
 
-        const popupWidth = 600;
-        const popupHeight = 800;
-        const left = (window.screen.width / 2) - (popupWidth / 2);
-        const top = (window.screen.height / 2) - (popupHeight / 2);
-
-        authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
+    function closeAuthModal() {
+        authModal.style.display = 'none';
+        authIframe.src = 'about:blank';
     }
 
     function logout() {
@@ -178,19 +179,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let tinymceLoaded = false;
     function loadTinyMCE() {
         if (tinymceLoaded) {
-            // If already loaded, just ensure editors are re-initialized for the new view
             initializeWysiwygEditors();
             return;
         }
         logToScreen('Starting to load TinyMCE script...');
         const script = document.createElement('script');
-        // The API key is from the original index.html
         script.src = 'https://cdn.tiny.cloud/1/w01ntc48o7kxzwys5kxk0gibj7s4lysx998e1rdgb1tjhm6y/tinymce/7/tinymce.min.js';
         script.referrerPolicy = 'origin';
         script.onload = () => {
             logToScreen('TinyMCE script loaded successfully.', 'success');
             tinymceLoaded = true;
-            // Now that the script is loaded, initialize the editors needed for the current view.
             initializeWysiwygEditors();
         };
         script.onerror = () => {
@@ -200,10 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.head.appendChild(script);
     }
 
-
     // --- EDITOR FORM RENDERER & DATA COLLECTION ---
     function initializeWysiwygEditors() {
-        // Don't try to initialize until the script is loaded.
         if (!tinymceLoaded) {
             logToScreen('TinyMCE not loaded yet, skipping editor initialization.');
             return;
@@ -361,7 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const collection = editorConfig.collections.find(c => c.name === collectionName);
         if (!collection) { metadataEditorDiv.innerHTML = '<p style="color: red;">Could not find collection configuration.</p>'; return; }
         createFormFields(metadataEditorDiv, collection.fields, currentFile.frontmatter);
-        // The editor will be initialized when the script loads if needed.
         initializeWysiwygEditors();
     }
 
@@ -486,7 +481,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EVENT LISTENERS ---
-    loginBtn.addEventListener('click', redirectToGitHubAuth);
+    loginBtn.addEventListener('click', startAuthentication);
+    closeModalBtn.addEventListener('click', closeAuthModal);
     logoutBtn.addEventListener('click', logout);
     backBtn.addEventListener('click', handleBackClick);
     saveBtn.addEventListener('click', handleSave);
