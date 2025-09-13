@@ -28,20 +28,6 @@ The flow is as follows:
 
 To prevent potential interference between third-party scripts and the sensitive auth flow, the TinyMCE editor script is loaded dynamically only *after* authentication is complete.
 
-## Debugging History & Key Learnings
-
-This project involved a complex debugging journey. The key takeaways are documented here for future reference.
-
-*   **The Goal:** The primary goal was to fix a persistent authentication loop in a mobile-first environment (iPhone only).
-*   **Failed Architectures:**
-    *   **Popup Flow (`window.open`)**: The initial attempts using a popup window were plagued by hard-to-diagnose issues, which were likely a combination of cross-origin security restrictions, browser race conditions (the popup closing before its message was processed), and aggressive script caching on iOS.
-    *   **Modal + Iframe Flow**: An attempt to solve the popup issues by using a modal with an `<iframe>` failed because GitHub's security policy explicitly forbids its login page from being rendered inside an iframe on a third-party domain (`X-Frame-Options: deny`).
-*   **The Correct Architecture:** The final, working solution is the **Redirect-Based Flow** described above. It is the most robust and compatible method for this type of web application.
-*   **Key Components:**
-    *   The `auth.strategycontent.agency` proxy is **essential**. It securely holds the GitHub OAuth Client Secret and is the only component that can exchange a `code` for a `token`. The application should always initiate authentication by directing the user to this proxy.
-    *   The `callback.html` page must handle the two-step flow: receive a `code`, send it to the proxy, and handle the `token` it gets back.
-    *   The state (the token) is passed from the callback to the main app via `localStorage`, which is simple and effective in a redirect flow.
-
 ## Development Workflow
 
 1.  **Branching:** The preferred naming convention is `yymmdd-"what-are-we-doing"` (e.g., `250912-implement-redirect-flow`).

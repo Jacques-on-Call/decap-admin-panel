@@ -88,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (accessToken) {
             // If we have a token, we are logged in.
-            // The token is cleared from localStorage on the callback page for security.
             loadTinyMCE();
         }
 
