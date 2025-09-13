@@ -84,14 +84,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- AUTHENTICATION ---
     async function handleAuthentication() {
         const params = new URLSearchParams(window.location.hash.substring(1));
-        const code = params.get('code');
+        let code = params.get('code');
         const error = params.get('error');
 
         if (error) {
             showToast(`Authentication failed: ${params.get('error_description') || error}`, 'error');
             window.history.replaceState({}, document.title, window.location.pathname);
-            updateUI();
-            return;
+        }
+
+        // Use sessionStorage as a resilient way to track the code
+        if (code) {
+            sessionStorage.setItem('github_code', code);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            code = sessionStorage.getItem('github_code');
         }
 
         if (code) {
@@ -102,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ code: code })
                 });
                 const data = await response.json();
+
                 if (data.token) {
                     accessToken = data.token;
                     localStorage.setItem('github_token', accessToken);
@@ -113,8 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Token exchange failed:', e);
                 showToast('Authentication failed during token exchange.', 'error');
             } finally {
-                // Clean the URL
-                window.history.replaceState({}, document.title, window.location.pathname);
+                // Clear the temporary code
+                sessionStorage.removeItem('github_code');
             }
         } else {
             // No code in URL, check for existing token in localStorage
@@ -138,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function logout() {
         localStorage.removeItem('github_token');
+        sessionStorage.removeItem('github_code');
         accessToken = null;
         if (window.tinymce) tinymce.remove();
         window.location.href = '/';
@@ -432,13 +440,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- MAIN INITIALIZATION ---
-    try {
-        handleAuthentication();
-        initializeMainApp();
-    } catch (error) {
-        console.error('Fatal error during initialization:', error);
-        document.body.innerHTML = '<h1 style="color: red;">A fatal error occurred. Please check the console.</h1>';
-    }
+    // Add a fallback trigger to catch the hash if the initial load is too fast
+    window.addEventListener('load', handleAuthentication);
+    // Initial call
+    handleAuthentication();
+    initializeMainApp();
+
 
     // --- EVENT LISTENERS ---
     loginBtn.addEventListener('click', startAuthentication);
