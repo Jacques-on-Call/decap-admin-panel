@@ -81,74 +81,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error loading editor configuration:', error); }
     }
 
-    // --- AUTHENTICATION ---
-    async function handleAuthentication() {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        let code = params.get('code');
-        const error = params.get('error');
-
-        if (error) {
-            showToast(`Authentication failed: ${params.get('error_description') || error}`, 'error');
-            window.history.replaceState({}, document.title, window.location.pathname);
+    // --- AUTHENTICATION (with Hello.js) ---
+    hello.init({
+        github: {
+            id: OAUTH_CLIENT_ID,
+            oauth: {
+                version: 2,
+                auth: 'https://github.com/login/oauth/authorize',
+                grant: 'https://github.com/login/oauth/access_token'
+            },
+            // Tells hello.js to use our proxy server
+            proxy: AUTH_URL
         }
+    });
 
-        // Use sessionStorage as a resilient way to track the code
-        if (code) {
-            sessionStorage.setItem('github_code', code);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-            code = sessionStorage.getItem('github_code');
-        }
-
-        if (code) {
-            try {
-                const response = await fetch(AUTH_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: code })
-                });
-                const data = await response.json();
-
-                if (data.token) {
-                    accessToken = data.token;
-                    localStorage.setItem('github_token', accessToken);
-                    showToast('Logged in successfully!', 'success');
-                } else {
-                    throw new Error('No token received from auth service.');
-                }
-            } catch (e) {
-                console.error('Token exchange failed:', e);
-                showToast('Authentication failed during token exchange.', 'error');
-            } finally {
-                // Clear the temporary code
-                sessionStorage.removeItem('github_code');
-            }
-        } else {
-            // No code in URL, check for existing token in localStorage
-            accessToken = localStorage.getItem('github_token');
-        }
-
-        if (accessToken) {
-            loadTinyMCE();
-        }
-
+    function handleLogin(auth) {
+        accessToken = auth.authResponse.access_token;
+        localStorage.setItem('github_token', accessToken);
+        showToast('Logged in successfully!', 'success');
+        loadTinyMCE();
         updateUI();
     }
 
-    function startAuthentication() {
-        const redirectUri = `${window.location.origin}/callback.html`;
-        // We go directly to GitHub because the proxy is only for the token exchange
-        const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`;
-
-        window.open(authUrl, '_blank', 'noopener,noreferrer');
-    }
-
-    function logout() {
-        localStorage.removeItem('github_token');
-        sessionStorage.removeItem('github_code');
+    function handleLogout() {
         accessToken = null;
+        localStorage.removeItem('github_token');
         if (window.tinymce) tinymce.remove();
-        window.location.href = '/';
+        showToast('Logged out.');
+        updateUI();
     }
 
     // --- TINYMCE DYNAMIC LOADER ---
@@ -421,11 +381,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeMainApp() {
         await loadEditorConfig();
-        if (editorConfig) {
-            updateUI();
-        } else {
-            document.getElementById('app-container').innerHTML = '<h1 style="color: red;">Could not load editor configuration.</h1>';
+        // Check for an existing session
+        const githubSession = hello.getAuthResponse('github');
+        if (githubSession && githubSession.access_token) {
+            accessToken = githubSession.access_token;
         }
+        updateUI();
     }
 
     function updateUI() {
@@ -440,16 +401,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- MAIN INITIALIZATION ---
-    // Add a fallback trigger to catch the hash if the initial load is too fast
-    window.addEventListener('load', handleAuthentication);
-    // Initial call
-    handleAuthentication();
     initializeMainApp();
 
-
     // --- EVENT LISTENERS ---
-    loginBtn.addEventListener('click', startAuthentication);
-    logoutBtn.addEventListener('click', logout);
+    hello.on('auth.login', handleLogin);
+    hello.on('auth.logout', handleLogout);
+
+    loginBtn.addEventListener('click', () => {
+        hello('github').login({ scope: 'repo' });
+    });
+
+    logoutBtn.addEventListener('click', () => {
+        hello('github').logout();
+    });
+
     backBtn.addEventListener('click', handleBackClick);
     saveBtn.addEventListener('click', handleSave);
     createNewBtn.addEventListener('click', handleCreateNew);
