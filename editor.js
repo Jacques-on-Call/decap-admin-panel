@@ -82,12 +82,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTHENTICATION (with Hello.js) ---
-    hello.init({
-        github: OAUTH_CLIENT_ID
-    }, {
-        redirect_uri: 'callback.html',
-        oauth_proxy: AUTH_URL
-    });
+    function initHelloJS() {
+        hello.init({
+            github: OAUTH_CLIENT_ID
+        }, {
+            redirect_uri: 'callback.html',
+            oauth_proxy: AUTH_URL
+        });
+
+        hello.on('auth.login', handleLogin);
+        hello.on('auth.logout', handleLogout);
+
+        // Check for an existing session now that hello is initialized
+        const githubSession = hello.getAuthResponse('github');
+        if (githubSession && githubSession.access_token) {
+            handleLogin({ authResponse: githubSession });
+        }
+    }
 
     function handleLogin(auth) {
         accessToken = auth.authResponse.access_token;
@@ -133,10 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
             selector: '.wysiwyg-editor',
             plugins: 'autoresize link lists wordcount',
             toolbar: 'undo redo | blocks | bold italic | bullist numlist | link removeformat',
-            menubar: false, statusbar: false, autoresize_bottom_margin: 20,
+            menubar: false,
+            statusbar: false,
+            autoresize_bottom_margin: 20,
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; }',
             skin: 'oxide',
-            init_instance_callback: (editor) => editor.setMode('design')
+            init_instance_callback: (editor) => editor.setMode('design'),
+            mobile: {
+                theme: 'mobile',
+                plugins: 'autosave lists autolink',
+                toolbar: 'undo bold italic styleselect'
+            }
         }).catch(error => {
             console.error('TinyMCE initialization error:', error);
             showToast('Editor initialization failed.', 'error');
@@ -375,12 +393,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeMainApp() {
         await loadEditorConfig();
-        // Check for an existing session
-        const githubSession = hello.getAuthResponse('github');
-        if (githubSession && githubSession.access_token) {
-            accessToken = githubSession.access_token;
-            loadTinyMCE();
-        }
         updateUI();
     }
 
@@ -397,17 +409,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- MAIN INITIALIZATION ---
     initializeMainApp();
+    initHelloJS();
 
     // --- EVENT LISTENERS ---
-    hello.on('auth.login', handleLogin);
-    hello.on('auth.logout', handleLogout);
-
     loginBtn.addEventListener('click', () => {
-        hello('github').login({ scope: 'repo' });
+        try {
+            hello('github').login({ scope: 'repo' }).catch(e => {
+                showToast('Login failed: ' + e.message, 'error');
+            });
+        } catch (e) {
+            showToast('Hello.js not loaded yet', 'error');
+        }
     });
 
     logoutBtn.addEventListener('click', () => {
-        hello('github').logout();
+        try {
+            hello('github').logout();
+        } catch (e) {
+            showToast('Logout failed.', 'error');
+        }
     });
 
     backBtn.addEventListener('click', handleBackClick);
