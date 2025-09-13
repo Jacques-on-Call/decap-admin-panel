@@ -5,13 +5,37 @@ backend:
   base_url: https://auth.strategycontent.agency
   auth_endpoint: auth
 
-media_folder: "public/images" # Media files will be stored in public/images
-public_folder: "/images" # The src attribute for uploaded media will begin with /images
+media_folder: "public/images"
+public_folder: "/images"
 
 collections:
-  - name: "pages"
-    label: "Pages"
-    folder: "src/pages"
+  - name: "discover"
+    label: "Discover"
+    folder: "src/pages/discover"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: "title"
+    summary: "{{title}}"
+    extension: "astro"
+    format: "frontmatter"
+    fields:
+      - {label: "Title", name: "title", widget: "string"}
+      - {label: "Body", name: "body", widget: "markdown"}
+  - name: "consider"
+    label: "Consider"
+    folder: "src/pages/consider"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: "title"
+    summary: "{{title}}"
+    extension: "astro"
+    format: "frontmatter"
+    fields:
+      - {label: "Title", name: "title", widget: "string"}
+      - {label: "Body", name: "body", widget: "markdown"}
+  - name: "get"
+    label: "Get"
+    folder: "src/pages/get"
     create: true
     slug: "{{slug}}"
     identifier_field: "title"
