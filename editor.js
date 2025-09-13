@@ -20,27 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastContainer = document.getElementById('toast-container');
     const mobileShowFilesBtn = document.getElementById('mobile-show-files-btn');
     const mobileShowEditorBtn = document.getElementById('mobile-show-editor-btn');
-    const authModal = document.getElementById('auth-modal');
-    const authIframe = document.getElementById('auth-iframe');
-    const closeModalBtn = document.querySelector('.close-btn');
 
     // --- STATE ---
     let accessToken = null;
     let currentPath = '';
     let editorConfig = null;
     let currentFile = { frontmatter: null, body: null, sha: null };
-
-    // --- DEBUG UTILITY ---
-    const debugOutput = document.getElementById('debug-output');
-    function logToScreen(message, type = 'info') {
-        console.log(`[DEBUG|${type}]`, message);
-        if (debugOutput) {
-            const entry = document.createElement('div');
-            entry.className = type;
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            debugOutput.prepend(entry);
-        }
-    }
 
     // --- GITHUB API CLIENT ---
     const github = {
@@ -98,74 +83,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- AUTHENTICATION ---
     function handleAuthentication() {
-        logToScreen('Authentication handler initiated.');
-
-        const allowedOrigins = [
-            'https://auth.strategycontent.agency',
-            window.location.origin
-        ];
-
-        const messageHandler = (event) => {
-            if (!allowedOrigins.includes(event.origin)) {
-                logToScreen(`Ignoring message from disallowed origin: ${event.origin}`, 'info');
-                return;
-            }
-
-            logToScreen(`Message received from allowed origin ${event.origin}. Raw data: ${JSON.stringify(event.data)}`);
-
-            if (typeof event.data === 'string' && event.data.startsWith('authorization:github:')) {
-                if (event.data.startsWith('authorization:github:success:')) {
-                    try {
-                        const jsonData = event.data.substring('authorization:github:success:'.length);
-                        const data = JSON.parse(jsonData);
-
-                        if (data.token) {
-                            accessToken = data.token;
-                            localStorage.setItem('github_token', accessToken);
-                            logToScreen('Token parsed and stored successfully.', 'success');
-                            showToast('Logged in successfully!', 'success');
-                            closeAuthModal();
-                            updateUI();
-                            loadTinyMCE();
-                            window.removeEventListener('message', messageHandler);
-                        }
-                    } catch (e) {
-                        logToScreen(`Could not parse auth message: ${e.message}`, 'error');
-                        showToast('Authentication failed during token parsing.', 'error');
-                    }
-                } else if (event.data.startsWith('authorization:github:error:')) {
-                    logToScreen(`Auth error message received: ${event.data}`, 'error');
-                    showToast('Authentication failed. Please try again.', 'error');
-                    closeAuthModal();
-                }
-            } else {
-                 logToScreen('Received message was not a valid auth string.', 'info');
-            }
-        };
-
-        window.addEventListener('message', messageHandler);
-
+        // In a redirect flow, the primary job is to check for a token in localStorage.
         accessToken = localStorage.getItem('github_token');
+
         if (accessToken) {
-            logToScreen('Found existing token in localStorage.');
+            // If we have a token, we are logged in.
+            // The token is cleared from localStorage on the callback page for security.
             loadTinyMCE();
-        } else {
-            logToScreen('No existing token found.');
         }
+
         updateUI();
     }
 
     function startAuthentication() {
-        logToScreen('Login button clicked. Opening auth modal...');
+        // This function now starts the redirect flow.
         const redirectUri = `${window.location.origin}/callback.html`;
         const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
-        authIframe.src = authUrl;
-        authModal.style.display = 'block';
-    }
-
-    function closeAuthModal() {
-        authModal.style.display = 'none';
-        authIframe.src = 'about:blank';
+        // Redirect the entire page to the auth URL.
+        window.location.href = authUrl;
     }
 
     function logout() {
@@ -182,17 +117,14 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeWysiwygEditors();
             return;
         }
-        logToScreen('Starting to load TinyMCE script...');
         const script = document.createElement('script');
         script.src = 'https://cdn.tiny.cloud/1/w01ntc48o7kxzwys5kxk0gibj7s4lysx998e1rdgb1tjhm6y/tinymce/7/tinymce.min.js';
         script.referrerPolicy = 'origin';
         script.onload = () => {
-            logToScreen('TinyMCE script loaded successfully.', 'success');
             tinymceLoaded = true;
             initializeWysiwygEditors();
         };
         script.onerror = () => {
-            logToScreen('Failed to load TinyMCE script.', 'error');
             showToast('Failed to load text editor.', 'error');
         };
         document.head.appendChild(script);
@@ -200,11 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EDITOR FORM RENDERER & DATA COLLECTION ---
     function initializeWysiwygEditors() {
-        if (!tinymceLoaded) {
-            logToScreen('TinyMCE not loaded yet, skipping editor initialization.');
-            return;
-        }
-        logToScreen('Initializing WYSIWYG editors.');
+        if (!tinymceLoaded) return;
         tinymce.remove('.wysiwyg-editor');
         tinymce.init({
             selector: '.wysiwyg-editor',
@@ -216,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
             init_instance_callback: (editor) => editor.setMode('design')
         }).catch(error => {
             console.error('TinyMCE initialization error:', error);
-            logToScreen(`TinyMCE init error: ${error.message}`, 'error');
             showToast('Editor initialization failed.', 'error');
         });
     }
@@ -482,7 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EVENT LISTENERS ---
     loginBtn.addEventListener('click', startAuthentication);
-    closeModalBtn.addEventListener('click', closeAuthModal);
     logoutBtn.addEventListener('click', logout);
     backBtn.addEventListener('click', handleBackClick);
     saveBtn.addEventListener('click', handleSave);

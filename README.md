@@ -1,60 +1,49 @@
 # Custom Content Editor for Strategy Content
 
-This repository hosts a custom-built, single-page web application that serves as a lightweight, mobile-friendly content editor. It is designed to replace the previous Decap CMS setup with a more streamlined, "Google Docs-like" editing experience.
+This repository hosts a custom-built, single-page web application that serves as a lightweight, mobile-friendly content editor. It is designed to replace a previous Decap CMS setup with a more streamlined, "Google Docs-like" editing experience, with a primary focus on being used from an iPhone.
 
 The application interfaces directly with the `Jacques-on-Call/StrategyContent` GitHub repository to manage content.
-
-## Key Features
-
-- **GitHub Authentication**: Securely logs in users via a custom OAuth service to authorize access to the content repository.
-- **File Browser**: Allows for browsing the content directories (`discover/`, `consider/`, `get/`) within the `StrategyContent` repository.
-- **Dynamic Form Editor**: The editor's fields are dynamically generated based on the schema defined in `admin/config.yml`. This allows the form to adapt to changes in content structure without requiring code changes.
-- **Complex Frontmatter Support**: The editor is designed to handle complex, nested YAML frontmatter, including nested objects for SEO metadata and lists of objects for modular page sections.
-- **WYSIWYG Editing**: Integrates the TinyMCE rich text editor for a "What You See Is What You Get" experience when editing main content blocks.
-- **Full Content Lifecycle**: Users can create new files, open existing files, edit content and frontmatter, and save all changes back to the GitHub repository as new commits.
-- **Responsive UI**: The interface is designed to be mobile-friendly, with a layout that adapts to smaller screens.
 
 ## How It Works
 
 The application is a vanilla JavaScript Single-Page Application (SPA) built with three core files:
 
-- `index.html`: The main entry point for the application. It defines the UI structure, including the modal for authentication, and loads the necessary scripts.
-- `editor.css`: Contains all styling for the application, including responsive rules.
-- `editor.js`: The heart of the application, containing all logic for authentication, GitHub API communication, form generation, and event handling.
-- `callback.html`: A simple page, loaded into an iframe, that handles the final step of the OAuth redirect and securely passes the authentication token to the main application.
+-   `index.html`: The main entry point for the application. It defines the UI structure and loads the necessary scripts.
+-   `editor.css`: Contains all styling for the application, including responsive rules and the minimalist header button styles.
+-   `editor.js`: The heart of the application, containing all logic for authentication, GitHub API communication, form generation, and event handling.
+-   `callback.html`: A simple page that handles the final step of the OAuth redirect, receiving the temporary auth `code`, exchanging it for a token, and returning the user to the main application.
 
-## Configuration
+## Final Authentication Architecture (Redirect Flow)
 
-The entire structure of the content, including collections, fields, and nested objects, is defined in `admin/config.yml`. To modify the fields available in the editor, you only need to edit this YAML file.
-
-## Technology Stack
-
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6+)
-- **Libraries**:
-  - `js-yaml`: For parsing and stringifying YAML frontmatter.
-  - `TinyMCE`: For the WYSIWYG rich text editor.
-
-## Development Workflow
-
-This project uses a sandbox environment for development. Changes are not live until they are committed and deployed.
-
-1.  **Branching:** All new work should be done on a dedicated branch. The preferred naming convention is `yymmdd-"what-are-we-doing"` (e.g., `250912-modal-auth-flow`).
-2.  **Committing:** Once changes are ready for testing, they should be committed to the branch with a descriptive message.
-3.  **Pull Request:** A pull request should be created from the branch to `main`.
-4.  **Deployment:** After the pull request is reviewed and merged into the `main` branch, the changes are automatically deployed and become live on `admin.strategycontent.agency`.
-
-## Authentication Architecture
-
-The editor uses a robust, modal-based authentication flow to securely connect to GitHub. This architecture was chosen to avoid issues with popup blockers, cross-origin messaging, and browser race conditions, particularly on mobile devices.
+The editor uses a standard and robust **Redirect-Based Authentication Flow** to securely connect to GitHub. This architecture is ideal for "all in one window" applications and avoids issues with popups or iframes.
 
 The flow is as follows:
 
-1.  **Modal Trigger:** When the user clicks "Login with GitHub", the application displays a modal window containing an `<iframe>`.
-2.  **Iframe Source:** The `<iframe>`'s source is set to the `auth.strategycontent.agency` service, which proxies the request to the GitHub OAuth authorization page.
-3.  **GitHub Authorization:** The user authorizes the application within the iframe.
-4.  **Redirect to Callback:** After authorization, GitHub redirects the iframe back to the proxy, which in turn redirects to our `callback.html` page, including a temporary authorization `code` in the URL.
-5.  **Token Exchange:** The script in `callback.html` sends this `code` back to the `auth.strategycontent.agency` service in a `POST` request. The service securely exchanges the code for a permanent `access_token` and returns it.
-6.  **`postMessage` to Parent:** The `callback.html` page then uses `window.parent.postMessage` to send the `access_token` securely up to the main editor window.
-7.  **Login Complete:** The main editor window listens for this message, validates its origin, stores the token, closes the modal, and initializes the editor interface.
+1.  **Redirect to Auth:** When the user clicks "Login with GitHub", the entire page redirects to the `auth.strategycontent.agency` service, which proxies the request to the GitHub OAuth authorization page.
+2.  **GitHub Authorization:** The user authorizes the application with GitHub.
+3.  **Redirect to Callback:** After authorization, GitHub redirects the user's browser back to our `callback.html` page, including a temporary authorization `code` in the URL.
+4.  **Token Exchange:** The script in `callback.html` sees the `code` and sends it to the `auth.strategycontent.agency` service in a background `POST` request. The service securely exchanges the code for a permanent `access_token` and returns it.
+5.  **Store Token & Redirect Home:** `callback.html` receives the final token, stores it in the browser's `localStorage`, and then redirects the page back to the main `index.html`.
+6.  **Login Complete:** When `index.html` loads, its JavaScript checks `localStorage` for the token, finds it, and initializes the editor in a fully logged-in state.
 
 To prevent potential interference between third-party scripts and the sensitive auth flow, the TinyMCE editor script is loaded dynamically only *after* authentication is complete.
+
+## Debugging History & Key Learnings
+
+This project involved a complex debugging journey. The key takeaways are documented here for future reference.
+
+*   **The Goal:** The primary goal was to fix a persistent authentication loop in a mobile-first environment (iPhone only).
+*   **Failed Architectures:**
+    *   **Popup Flow (`window.open`)**: The initial attempts using a popup window were plagued by hard-to-diagnose issues, which were likely a combination of cross-origin security restrictions, browser race conditions (the popup closing before its message was processed), and aggressive script caching on iOS.
+    *   **Modal + Iframe Flow**: An attempt to solve the popup issues by using a modal with an `<iframe>` failed because GitHub's security policy explicitly forbids its login page from being rendered inside an iframe on a third-party domain (`X-Frame-Options: deny`).
+*   **The Correct Architecture:** The final, working solution is the **Redirect-Based Flow** described above. It is the most robust and compatible method for this type of web application.
+*   **Key Components:**
+    *   The `auth.strategycontent.agency` proxy is **essential**. It securely holds the GitHub OAuth Client Secret and is the only component that can exchange a `code` for a `token`. The application should always initiate authentication by directing the user to this proxy.
+    *   The `callback.html` page must handle the two-step flow: receive a `code`, send it to the proxy, and handle the `token` it gets back.
+    *   The state (the token) is passed from the callback to the main app via `localStorage`, which is simple and effective in a redirect flow.
+
+## Development Workflow
+
+1.  **Branching:** The preferred naming convention is `yymmdd-"what-are-we-doing"` (e.g., `250912-implement-redirect-flow`).
+2.  **Deployment:** Changes are deployed to `admin.strategycontent.agency` after the pull request is merged into the `main` branch.
+3.  **Cache-Busting:** Due to aggressive caching on mobile browsers, it is critical to append a versioned query string (`?v=X`) to CSS and JS links in `index.html` when making changes.
