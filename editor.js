@@ -97,14 +97,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- AUTHENTICATION (Final Fix with Debugging) ---
     function handleAuthentication() {
         logToScreen('Authentication handler initiated.');
+
+        const allowedOrigins = [
+            'https://auth.strategycontent.agency',
+            'https://admin.strategycontent.agency',
+            window.location.origin
+        ];
+
         const messageHandler = (event) => {
-            // We only care about messages from our own origin.
-            if (event.origin !== window.location.origin) {
-                logToScreen(`Ignoring message from different origin: ${event.origin}`, 'info');
+            if (!allowedOrigins.includes(event.origin)) {
+                logToScreen(`Ignoring message from disallowed origin: ${event.origin}`, 'info');
                 return;
             }
 
-            logToScreen(`Message received. Raw data: ${JSON.stringify(event.data)}`);
+            logToScreen(`Message received from allowed origin ${event.origin}. Raw data: ${JSON.stringify(event.data)}`);
 
             if (typeof event.data === 'string' && event.data.startsWith('authorization:github:')) {
                 if (event.data.startsWith('authorization:github:success:')) {
