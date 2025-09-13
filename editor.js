@@ -403,7 +403,46 @@ document.addEventListener('DOMContentLoaded', () => {
     hello.on('auth.logout', handleLogout);
 
     loginBtn.addEventListener('click', () => {
-        hello('github').login({ scope: 'repo' });
+        const p = document.createElement('p');
+        loginContainer.appendChild(p);
+
+        try {
+            p.textContent = 'Login button clicked. The `hello` object exists.';
+            p.style.color = 'green';
+
+            const service = hello('github');
+            const p2 = document.createElement('p');
+            p2.textContent = 'The `hello(\'github\')` service object was created.';
+            p2.style.color = 'green';
+            loginContainer.appendChild(p2);
+
+            if (typeof service.login !== 'function') {
+                 const p3 = document.createElement('p');
+                 p3.textContent = 'ERROR: `service.login` is not a function!';
+                 p3.style.color = 'red';
+                 loginContainer.appendChild(p3);
+                 return;
+            }
+
+            const p4 = document.createElement('p');
+            p4.textContent = 'Calling service.login()...';
+            p4.style.color = 'orange';
+            loginContainer.appendChild(p4);
+
+            service.login({ scope: 'repo' }).then(null, (e) => {
+                // This will catch login failures like popup closed etc.
+                const p_err = document.createElement('p');
+                p_err.textContent = 'Login failed in promise: ' + JSON.stringify(e);
+                p_err.style.color = 'red';
+                loginContainer.appendChild(p_err);
+            });
+
+        } catch (e) {
+            const p_err = document.createElement('p');
+            p_err.textContent = 'A critical error occurred: ' + e.message;
+            p_err.style.color = 'red';
+            loginContainer.appendChild(p_err);
+        }
     });
 
     logoutBtn.addEventListener('click', () => {
