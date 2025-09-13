@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURATION ---
-    const AUTH_URL = 'https://auth.strategycontent.agency/auth';
     const OAUTH_CLIENT_ID = 'Ov23li6LEsxbtoV7ITp1';
     const REPO_OWNER = 'Jacques-on-Call';
     const REPO_NAME = 'StrategyContent';
@@ -156,9 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function redirectToGitHubAuth() {
-        logToScreen('Login button clicked. Opening auth popup...');
+        logToScreen('Login button clicked. Opening auth popup for direct GitHub test...');
         const redirectUri = `${window.location.origin}/callback.html`;
-        const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`;
 
         const popupWidth = 600;
         const popupHeight = 800;

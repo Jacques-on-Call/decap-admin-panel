@@ -2,87 +2,57 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Authentication Callback</title>
+    <title>Authentication Callback Diagnostic</title>
 <style>
-    body { font-family: monospace; background: #222; color: #eee; margin: 0; padding: 0; }
-    #debug-panel {
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        padding: 10px;
-        box-sizing: border-box;
-    }
-    #debug-output { height: 100%; overflow-y: scroll; font-size: 12px; }
-    #debug-output div {
-        border-bottom: 1px solid #333;
-        padding: 2px 0;
-        margin-bottom: 2px;
-        word-break: break-all;
-    }
-    #debug-output .error { color: #f66; }
-    #debug-output .success { color: #6f6; }
+    body { font-family: monospace; background: #222; color: #eee; margin: 10px; font-size: 14px; }
+    h1 { color: #fff; border-bottom: 1px solid #555; padding-bottom: 10px; }
+    div { margin: 10px 0; padding: 5px; border: 1px solid #444; border-radius: 4px; word-break: break-all; }
+    .label { font-weight: bold; color: #88f; }
 </style>
 </head>
 <body>
-    <div id="debug-panel">
-        <div id="debug-output"></div>
+    <h1>Callback Diagnostic Page</h1>
+    <p>This page will stay open so you can see the results of the GitHub redirect.</p>
+
+    <div id="full-url">
+        <span class="label">Full URL:</span>
+        <span id="full-url-value"></span>
     </div>
+
+    <div id="query-params">
+        <span class="label">Query Parameters:</span>
+        <span id="query-params-value"></span>
+    </div>
+
+    <div id="hash-params">
+        <span class="label">Hash Parameters:</span>
+        <span id="hash-params-value"></span>
+    </div>
+
+    <div id="code">
+        <span class="label">Detected `code`:</span>
+        <span id="code-value"></span>
+    </div>
+
+    <div id="error">
+        <span class="label">Detected `error`:</span>
+        <span id="error-value"></span>
+    </div>
+
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const debugOutput = document.getElementById('debug-output');
-        function logToScreen(message, type = 'info') {
-            console.log(`[CALLBACK|${type}]`, message);
-            if (debugOutput) {
-                const entry = document.createElement('div');
-                entry.className = type;
-                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-                debugOutput.prepend(entry);
-            }
-        }
+        const fullUrl = window.location.href;
+        const queryParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
 
-        logToScreen('Callback page loaded.');
-        logToScreen(`Full URL: ${window.location.href}`);
+        const code = queryParams.get('code');
+        const error = queryParams.get('error') || hashParams.get('error');
 
-        const sendMessage = (message) => {
-            logToScreen(`Constructed message: ${message}`);
-            if (window.opener && !window.opener.closed) {
-                logToScreen('Opener window found. Sending message in 200ms...');
-                setTimeout(() => {
-                    window.opener.postMessage(message, window.location.origin);
-                    logToScreen('Message sent. Closing window in 200ms...');
-                    setTimeout(() => window.close(), 200);
-                }, 200);
-            } else {
-                logToScreen('Opener window not found!', 'error');
-            }
-        };
-
-        const postSuccess = (token) => {
-            const message = `authorization:github:success:${JSON.stringify({ token: token })}`;
-            sendMessage(message);
-        };
-
-        const postError = (error, error_description) => {
-            const message = `authorization:github:error:${JSON.stringify({ error, error_description })}`;
-            sendMessage(message);
-        };
-
-        // The auth proxy should return the token in the URL hash.
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        const token = params.get('access_token') || params.get('token');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
-
-        logToScreen(`URL Hash: ${window.location.hash}`);
-
-        if (token) {
-            logToScreen('Token found in URL hash.', 'success');
-            postSuccess(token);
-        } else if (error) {
-            logToScreen(`Error found in URL hash: ${error}`, 'error');
-            postError(error, errorDescription);
-        } else {
-            logToScreen('No token or error found in URL hash.', 'error');
-            postError('invalid_callback', 'Callback page was reached but no token or error was found in the URL hash.');
-        }
+        document.getElementById('full-url-value').textContent = fullUrl;
+        document.getElementById('query-params-value').textContent = window.location.search || '(empty)';
+        document.getElementById('hash-params-value').textContent = window.location.hash || '(empty)';
+        document.getElementById('code-value').textContent = code || '(not found)';
+        document.getElementById('error-value').textContent = error || '(not found)';
     });
     </script>
 </body>
