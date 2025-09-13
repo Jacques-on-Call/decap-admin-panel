@@ -20,78 +20,7 @@ collections:
     format: "frontmatter"
     fields:
       - {label: "Title", name: "title", widget: "string"}
-      - label: "Page Sections"
-        name: "sections"
-        widget: "list"
-        types: &page_section_types
-          - label: "Hero"
-            name: "hero"
-            widget: "object"
-            fields:
-              - {label: "Title", name: "title", widget: "string"}
-              - {label: "Subtitle", name: "subtitle", widget: "string", required: false}
-              - {label: "Image", name: "image", widget: "image", required: false}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-              - label: "Buttons"
-                name: "buttons"
-                widget: "list"
-                required: false
-                fields:
-                  - {label: "Button Text", name: "text", widget: "string"}
-                  - {label: "Button URL", name: "url", widget: "string"}
-                  - label: "Button Style"
-                    name: "style"
-                    widget: "select"
-                    options: ["primary", "ghost", "link"]
-          - label: "Text Block"
-            name: "text_block"
-            widget: "object"
-            fields:
-              - {label: "Content", name: "content", widget: "markdown"}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-          - label: "Grid"
-            name: "grid"
-            widget: "object"
-            fields:
-              - {label: "Title", name: "title", widget: "string", required: false}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-              - label: "Grid Items"
-                name: "items"
-                widget: "list"
-                fields:
-                  - {label: "Title", name: "title", widget: "string"}
-                  - {label: "Text", name: "text", widget: "string"}
-                  - {label: "Image", name: "image", widget: "image", required: false}
-          - label: "Call to Action"
-            name: "cta"
-            widget: "object"
-            fields:
-              - {label: "Title", name: "title", widget: "string"}
-              - {label: "Text", name: "text", widget: "string", required: false}
-              - label: "Theme"
-                name: "theme"
-                widget: "select"
-                options: ["light", "dark", "accent"]
-              - label: "Buttons"
-                name: "buttons"
-                widget: "list"
-                required: false
-                fields:
-                  - {label: "Button Text", name: "text", widget: "string"}
-                  - {label: "Button URL", name: "url", widget: "string"}
-                  - label: "Button Style"
-                    name: "style"
-                    widget: "select"
-                    options: ["primary", "ghost", "link"]
+      - {label: "Body", name: "body", widget: "markdown"}
   - name: "consider"
     label: "Consider"
     folder: "src/pages/consider"
@@ -103,10 +32,7 @@ collections:
     format: "frontmatter"
     fields:
       - {label: "Title", name: "title", widget: "string"}
-      - label: "Page Sections"
-        name: "sections"
-        widget: "list"
-        types: *page_section_types
+      - {label: "Body", name: "body", widget: "markdown"}
   - name: "get"
     label: "Get"
     folder: "src/pages/get"
@@ -118,7 +44,4 @@ collections:
     format: "frontmatter"
     fields:
       - {label: "Title", name: "title", widget: "string"}
-      - label: "Page Sections"
-        name: "sections"
-        widget: "list"
-        types: *page_section_types
+      - {label: "Body", name: "body", widget: "markdown"}
