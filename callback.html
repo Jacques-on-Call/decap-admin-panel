@@ -1,10 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Hello, redirecting...</title>
+    <meta charset="utf-8">
+    <title>Authentication Callback</title>
 </head>
 <body>
-    <h1>Please wait...</h1>
-    <script src="hello.all.min.js"></script>
+    <p>Processing authentication... Please do not close this window.</p>
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+
+            if (window.opener) {
+                let targetUrl;
+                if (error) {
+                    targetUrl = `${window.location.origin}/#error=${error}&error_description=${encodeURIComponent(errorDescription || 'Unknown error')}`;
+                } else if (code) {
+                    targetUrl = `${window.location.origin}/#code=${code}`;
+                } else {
+                    targetUrl = `${window.location.origin}/#error=invalid_callback&error_description=No_code_or_error_received`;
+                }
+
+                setTimeout(() => {
+                    window.opener.location.replace(targetUrl);
+                    window.close();
+                }, 300);
+
+            } else {
+                document.body.textContent = 'Error: Could not find the main application window. Please close this window and try again.';
+            }
+        })();
+    </script>
 </body>
 </html>
