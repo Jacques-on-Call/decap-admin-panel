@@ -19,7 +19,6 @@
     }
     #debug-output .error { color: #f66; }
     #debug-output .success { color: #6f6; }
-    #debug-output .info { color: #88f; }
 </style>
 </head>
 <body>
@@ -39,11 +38,11 @@
             }
         }
 
-        logToScreen('Callback page loaded.', 'success');
+        logToScreen('Callback page loaded.');
         logToScreen(`Full URL: ${window.location.href}`);
 
         const sendMessage = (message) => {
-            logToScreen(`Constructing message: ${message}`);
+            logToScreen(`Constructed message: ${message}`);
             if (window.opener && !window.opener.closed) {
                 logToScreen('Opener window found. Sending message in 200ms...');
                 setTimeout(() => {
@@ -56,51 +55,33 @@
             }
         };
 
-        const queryParams = new URLSearchParams(window.location.search);
-        const code = queryParams.get('code');
-        const error = queryParams.get('error');
+        const postSuccess = (token) => {
+            const message = `authorization:github:success:${JSON.stringify({ token: token })}`;
+            sendMessage(message);
+        };
 
-        logToScreen(`URL Query: ${queryParams.toString()}`);
+        const postError = (error, error_description) => {
+            const message = `authorization:github:error:${JSON.stringify({ error, error_description })}`;
+            sendMessage(message);
+        };
 
-        if (error) {
-            logToScreen(`Received error from GitHub: ${error}`, 'error');
-            sendMessage(`authorization:github:error:${JSON.stringify({ error: error })}`);
-        } else if (code) {
-            logToScreen(`Received auth code: ${code}`, 'success');
-            logToScreen('Exchanging code for token via proxy...');
+        // The auth proxy should return the token in the URL hash.
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const token = params.get('access_token') || params.get('token');
+        const error = params.get('error');
+        const errorDescription = params.get('error_description');
 
-            const authServiceUrl = 'https://auth.strategycontent.agency/auth';
+        logToScreen(`URL Hash: ${window.location.hash}`);
 
-            fetch(authServiceUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: code })
-            })
-            .then(response => {
-                logToScreen(`Proxy response status: ${response.status}`);
-                if (!response.ok) {
-                    throw new Error(`Token exchange failed with status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                logToScreen('Received data from proxy: ' + JSON.stringify(data));
-                if (data.token) {
-                    logToScreen('Token extracted successfully.', 'success');
-                    const message = `authorization:github:success:${JSON.stringify({ token: data.token })}`;
-                    sendMessage(message);
-                } else {
-                    throw new Error('Proxy response did not contain a token.');
-                }
-            })
-            .catch(err => {
-                logToScreen(`Token exchange failed: ${err.message}`, 'error');
-                sendMessage(`authorization:github:error:${JSON.stringify({ error: 'token_exchange_failed', error_description: err.message })}`);
-            });
-
+        if (token) {
+            logToScreen('Token found in URL hash.', 'success');
+            postSuccess(token);
+        } else if (error) {
+            logToScreen(`Error found in URL hash: ${error}`, 'error');
+            postError(error, errorDescription);
         } else {
-            logToScreen('No code or error found in URL.', 'error');
-            sendMessage(`authorization:github:error:${JSON.stringify({ error: 'invalid_callback', error_description: 'Callback was called without an auth code or an error.' })}`);
+            logToScreen('No token or error found in URL hash.', 'error');
+            postError('invalid_callback', 'Callback page was reached but no token or error was found in the URL hash.');
         }
     });
     </script>
