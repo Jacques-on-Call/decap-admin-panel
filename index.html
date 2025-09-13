@@ -5,89 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
   <title>Content Manager</title>
+  <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url">
 </head>
 <body>
 
-<!-- 🔹 Debug Panel -->
+<!-- 🔹 1. Debug Panel (mobile-friendly visibility + message logger) -->
 <script>
 (function () {
   const panel = document.createElement('div');
-  panel.id = 'debug-panel';
+  panel.id = 'decap-debug';
   panel.style = 'position:fixed;left:8px;bottom:8px;z-index:99999;background:#111;color:#fff;padding:8px;font-size:12px;border-radius:6px;opacity:.85;max-width:320px';
-  panel.innerHTML = '<strong>Auth Debug</strong><div id="debug-log" style="margin-top:6px"></div><button id="debug-test" style="margin-top:6px">Simulate token</button>';
+  panel.innerHTML = '<strong>Decap Debug</strong><div id="decap-debug-log" style="margin-top:6px"></div><button id="decap-debug-test" style="margin-top:6px">Simulate message</button>';
   document.addEventListener('DOMContentLoaded', () => document.body.appendChild(panel));
-  function log(m){ const el=document.getElementById('debug-log'); if(!el)return; el.innerHTML += '<div style="margin-top:4px;">'+String(m)+'</div>'; }
-  log('Stored token: ' + (localStorage.getItem('github_token') || '—none—'));
+  function log(m){ const el=document.getElementById('decap-debug-log'); if(!el)return; el.innerHTML += '<div style="margin-top:4px;">'+String(m)+'</div>'; }
+  log('stored token: ' + (localStorage.getItem('decap-cms:githubToken') || '—none—'));
   window.addEventListener('message', e => log('message from ' + e.origin + ': ' + (typeof e.data === 'string' ? e.data : JSON.stringify(e.data))));
   document.addEventListener('click', e => {
-    if (e.target && e.target.id === 'debug-test') {
-      const payload = JSON.stringify({ token: 'TEST_TOKEN_PLACEHOLDER' });
+    if (e.target && e.target.id === 'decap-debug-test') {
+      const payload = JSON.stringify({ token: 'TEST_TOKEN_PLACEHOLDER', provider: 'github' });
       window.postMessage(`authorization:github:success:${payload}`, window.location.origin);
-      log('Emitted simulated authorization message');
+      log('emitted simulated authorization message');
     }
   });
 })();
 </script>
 
-<!-- 🔹 Token from URL hash (fallback for redirect-based auth) -->
+<!-- 🔹 2. Hash-to-localStorage fallback (for redirect-based token delivery) -->
 <script>
 (function () {
-  const m = (location.hash || "").match(/\baccess_token=([^&]+)/);
+  var m = (location.hash || "").match(/\baccess_token=([^&]+)/);
   if (m) {
     try {
-      localStorage.setItem("github_token", decodeURIComponent(m[1]));
+      localStorage.setItem("decap-cms:githubToken", decodeURIComponent(m[1]));
     } catch (_) {}
     history.replaceState(null, "", location.pathname + location.search);
   }
 })();
 </script>
 
-<!-- 🔹 Editor Shell -->
-<div id="editor-shell" style="display:none; padding:12px;">
-  <h2>Edit Content</h2>
-  <textarea id="editor" style="width:100%; min-height:60vh;">Loading...</textarea>
-  <button id="save-btn" style="margin-top:12px;">Save</button>
-  <div id="editor-status" style="margin-top:8px; font-size:12px; opacity:0.7;"></div>
-</div>
-
-<!-- 🔹 Editor Loader -->
-<script>
-(function () {
-  const token = localStorage.getItem('github_token');
-  if (!token) return;
-
-  // Show editor shell
-  document.getElementById('editor-shell').style.display = 'block';
-
-  // Load TinyMCE
-  const script = document.createElement('script');
-  script.src = 'https://cdn.tiny.cloud/1/w01ntc48o7kxzwys5kxk0gibj7s4lysx998e1rdgb1tjhm6y/tinymce/8/tinymce.min.js';
-  script.referrerPolicy = 'origin';
-  script.crossOrigin = 'anonymous';
-  script.onload = () => {
-    tinymce.init({
-      selector: '#editor',
-      plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
-      toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
-      setup: (editor) => {
-        editor.on('init', () => {
-          document.getElementById('editor-status').textContent = 'Editor ready.';
-        });
-      }
-    });
-  };
-  document.body.appendChild(script);
-
-  // Save button simulation
-  document.getElementById('save-btn').addEventListener('click', () => {
-    const content = tinymce.activeEditor.getContent();
-    document.getElementById('editor-status').textContent = 'Saving...';
-    setTimeout(() => {
-      document.getElementById('editor-status').textContent = 'Saved (simulated).';
-    }, 1000);
-  });
-})();
-</script>
+<!-- 🔹 3. Load Decap CMS (must come last) -->
+<script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js" data-cfasync="false"></script>
 
 </body>
 </html>
