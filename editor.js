@@ -82,53 +82,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTHENTICATION ---
-    function checkUrlForToken() {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        const token = params.get('token');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
-
-        if (error) {
-            showToast(`Authentication Error: ${errorDescription || error}`, 'error');
-            // Clean the URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        if (token) {
-            accessToken = token;
-            localStorage.setItem('github_token', token);
-            // Clean the URL so the token doesn't linger
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    }
-
     function handleAuthentication() {
-        // Check the URL hash for a token first.
-        checkUrlForToken();
-
-        // If we didn't get a token from the URL, check localStorage.
-        if (!accessToken) {
-            accessToken = localStorage.getItem('github_token');
-        }
+        accessToken = localStorage.getItem('github_token');
 
         if (accessToken) {
             loadTinyMCE();
-        }
+        } else {
+            // Listen for the popup's message if we don't have a token
+            window.addEventListener('message', (event) => {
+                // Security check: only accept messages from our own origin
+                if (event.origin !== window.location.origin) {
+                    console.warn(`Ignored message from untrusted origin: ${event.origin}`);
+                    return;
+                }
 
+                const data = event.data;
+
+                if (data.type === 'github_auth_success' && data.token) {
+                    accessToken = data.token;
+                    localStorage.setItem('github_token', accessToken);
+                    showToast('Logged in successfully!', 'success');
+                    updateUI();
+                    loadTinyMCE();
+                } else if (data.type === 'github_auth_error') {
+                    showToast(`Authentication failed: ${data.error}`, 'error');
+                }
+            });
+        }
         updateUI();
     }
 
     function startAuthentication() {
         const redirectUri = `${window.location.origin}/callback.html`;
         const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
-        window.location.href = authUrl;
+
+        const popupWidth = 600;
+        const popupHeight = 800;
+        const left = (window.screen.width / 2) - (popupWidth / 2);
+        const top = (window.screen.height / 2) - (popupHeight / 2);
+
+        const authPopup = window.open(authUrl, 'gitHubAuth', `width=${popupWidth},height=${popupHeight},top=${top},left=${left}`);
+
+        if (!authPopup) {
+            showToast('Popup blocked. Please allow popups for this site.', 'error');
+            return;
+        }
+
+        const popupCheckInterval = setInterval(() => {
+            if (authPopup.closed) {
+                clearInterval(popupCheckInterval);
+                if (!accessToken) {
+                    showToast('Authentication was canceled.', 'info');
+                }
+            }
+        }, 500);
     }
 
     function logout() {
         localStorage.removeItem('github_token');
         accessToken = null;
         if (window.tinymce) tinymce.remove();
-        window.location.href = '/'; // Go back to login screen
+        window.location.href = '/';
     }
 
     // --- TINYMCE DYNAMIC LOADER ---

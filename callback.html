@@ -5,38 +5,25 @@
     <title>Authentication Callback</title>
 <style>
     body { font-family: monospace; background: #222; color: #eee; margin: 10px; font-size: 14px; }
-    #status { padding: 10px; border: 1px solid #555; border-radius: 4px; white-space: pre-wrap; word-break: break-all; margin-top: 15px; }
-    .error { color: #f66; border-color: #f66; }
+    #status { padding: 10px; border: 1px solid #555; border-radius: 4px; }
+    .error { color: #f66; }
 </style>
 </head>
 <body>
-    <h1>Authentication Callback</h1>
-    <p>Processing login, please wait...</p>
-    <div id="status">Status: Initializing...</div>
-
+    <p id="status">Completing authentication...</p>
     <script>
     try {
         const statusEl = document.getElementById('status');
-        const log = (message, isError = false) => {
-            console.log(message);
-            statusEl.textContent += `\n${message}`;
-            if(isError) statusEl.classList.add('error');
-        };
-
-        log('Script started.');
-
         const queryParams = new URLSearchParams(window.location.search);
-        log(`URL Search Params: ${queryParams.toString()}`);
-
         const code = queryParams.get('code');
         const error = queryParams.get('error');
 
         if (error) {
-            throw new Error(`GitHub returned an error: ${error} - ${queryParams.get('error_description') || 'No description'}`);
+            throw new Error(`GitHub returned an error: ${error}`);
         }
 
         if (code) {
-            log('Auth code found. Exchanging for token...');
+            statusEl.textContent = 'Auth code received. Exchanging for token...';
             const authServiceUrl = 'https://auth.strategycontent.agency/auth';
 
             fetch(authServiceUrl, {
@@ -45,7 +32,6 @@
                 body: JSON.stringify({ code: code })
             })
             .then(response => {
-                log(`Proxy response status: ${response.status}`);
                 if (!response.ok) {
                     return response.text().then(text => {
                         throw new Error(`Token exchange failed with status ${response.status}: ${text}`);
@@ -54,32 +40,35 @@
                 return response.json();
             })
             .then(data => {
-                log('Proxy response data: ' + JSON.stringify(data));
                 if (data.token) {
-                    log('Token received successfully! Redirecting to editor with token in hash...');
-                    // Redirect back to the main page, passing the token in the URL hash.
-                    window.location.href = `/#token=${data.token}`;
+                    statusEl.textContent = 'Token received! Sending to main window...';
+
+                    if (window.opener && !window.opener.closed) {
+                        const message = { type: 'github_auth_success', token: data.token };
+                        window.opener.postMessage(message, window.location.origin);
+
+                        setTimeout(() => { window.close(); }, 200);
+                    } else {
+                        throw new Error('Opener window not found. Cannot send token.');
+                    }
                 } else {
                     throw new Error('Proxy response did not contain a token.');
                 }
             })
             .catch(err => {
-                log(`Token exchange fetch failed: ${err.message}`, true);
-                // Redirect back with an error in the hash.
-                window.location.href = `/#error=token_exchange_failed&error_description=${encodeURIComponent(err.message)}`;
+                statusEl.textContent = `Error: ${err.message}`;
+                statusEl.className = 'error';
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({ type: 'github_auth_error', error: err.message }, window.location.origin);
+                }
             });
 
         } else {
-            throw new Error('Invalid callback: No authorization code found in URL.');
+            throw new Error('Invalid callback: No authorization code found.');
         }
     } catch (e) {
-        const statusEl = document.getElementById('status');
-        statusEl.textContent = `A fatal script error occurred: ${e.message}`;
-        statusEl.className = 'error';
-        // Redirect back with the error in the hash.
-        setTimeout(() => {
-            window.location.href = `/#error=fatal_script_error&error_description=${encodeURIComponent(e.message)}`;
-        }, 3000);
+        document.getElementById('status').textContent = `A fatal script error occurred: ${e.message}`;
+        document.getElementById('status').className = 'error';
     }
     </script>
 </body>
