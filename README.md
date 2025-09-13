@@ -11,9 +11,9 @@ The application is a vanilla JavaScript Single-Page Application (SPA) built with
 -   `index.html`: The main entry point for the application. It defines the UI structure and loads the necessary scripts.
 -   `editor.css`: Contains all styling for the application, including responsive rules and the minimalist header button styles.
 -   `editor.js`: The heart of the application, containing all logic for authentication, GitHub API communication, form generation, and event handling.
--   `callback.html`: A simple page that handles the final step of the OAuth redirect, receiving the temporary auth `code`, exchanging it for a token, and returning the user to the main application.
+-   `callback.html`: A simple page that handles the final step of the OAuth redirect. It receives the temporary auth `code`, exchanges it for a token via the auth proxy, and then redirects back to the main application, passing the token in the URL hash.
 
-## Final Authentication Architecture (Redirect Flow)
+## Final Authentication Architecture (Redirect Flow with URL Hash)
 
 The editor uses a standard and robust **Redirect-Based Authentication Flow** to securely connect to GitHub. This architecture is ideal for "all in one window" applications and avoids issues with popups or iframes.
 
@@ -23,8 +23,8 @@ The flow is as follows:
 2.  **GitHub Authorization:** The user authorizes the application with GitHub.
 3.  **Redirect to Callback:** After authorization, GitHub redirects the user's browser back to our `callback.html` page, including a temporary authorization `code` in the URL.
 4.  **Token Exchange:** The script in `callback.html` sees the `code` and sends it to the `auth.strategycontent.agency` service in a background `POST` request. The service securely exchanges the code for a permanent `access_token` and returns it.
-5.  **Store Token & Redirect Home:** `callback.html` receives the final token, stores it in the browser's `localStorage`, and then redirects the page back to the main `index.html`.
-6.  **Login Complete:** When `index.html` loads, its JavaScript checks `localStorage` for the token, finds it, and initializes the editor in a fully logged-in state.
+5.  **Redirect Home with Token in Hash:** `callback.html` receives the final token and immediately redirects the page back to the main `index.html`, with the token appended in the URL hash (e.g., `/#token=...`).
+6.  **Login Complete:** When `index.html` loads, its JavaScript checks the URL hash for the token. If found, it stores the token in `localStorage` for future visits, cleans the token from the visible URL, and initializes the editor in a fully logged-in state.
 
 To prevent potential interference between third-party scripts and the sensitive auth flow, the TinyMCE editor script is loaded dynamically only *after* authentication is complete.
 

@@ -47,7 +47,6 @@
             .then(response => {
                 log(`Proxy response status: ${response.status}`);
                 if (!response.ok) {
-                    // Try to get text from the response to see the error message from the proxy
                     return response.text().then(text => {
                         throw new Error(`Token exchange failed with status ${response.status}: ${text}`);
                     });
@@ -57,28 +56,30 @@
             .then(data => {
                 log('Proxy response data: ' + JSON.stringify(data));
                 if (data.token) {
-                    log('Token received successfully! Storing token...');
-                    localStorage.setItem('github_token', data.token);
-                    log('Token stored. Redirecting to editor...');
-                    window.location.href = '/';
+                    log('Token received successfully! Redirecting to editor with token in hash...');
+                    // Redirect back to the main page, passing the token in the URL hash.
+                    window.location.href = `/#token=${data.token}`;
                 } else {
                     throw new Error('Proxy response did not contain a token.');
                 }
             })
             .catch(err => {
-                // This catch handles fetch/network errors or errors thrown from the .then() blocks
                 log(`Token exchange fetch failed: ${err.message}`, true);
-                setTimeout(() => { window.location.href = '/'; }, 5000);
+                // Redirect back with an error in the hash.
+                window.location.href = `/#error=token_exchange_failed&error_description=${encodeURIComponent(err.message)}`;
             });
 
         } else {
             throw new Error('Invalid callback: No authorization code found in URL.');
         }
     } catch (e) {
-        // This is a "can't-fail" catch block for any synchronous errors in the script itself.
         const statusEl = document.getElementById('status');
-        statusEl.textContent = `A fatal script error occurred on the callback page:\n\nMessage: ${e.message}\n\nStack: ${e.stack}`;
+        statusEl.textContent = `A fatal script error occurred: ${e.message}`;
         statusEl.className = 'error';
+        // Redirect back with the error in the hash.
+        setTimeout(() => {
+            window.location.href = `/#error=fatal_script_error&error_description=${encodeURIComponent(e.message)}`;
+        }, 3000);
     }
     </script>
 </body>

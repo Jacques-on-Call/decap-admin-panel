@@ -82,12 +82,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTHENTICATION ---
+    function checkUrlForToken() {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const token = params.get('token');
+        const error = params.get('error');
+        const errorDescription = params.get('error_description');
+
+        if (error) {
+            showToast(`Authentication Error: ${errorDescription || error}`, 'error');
+            // Clean the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        if (token) {
+            accessToken = token;
+            localStorage.setItem('github_token', token);
+            // Clean the URL so the token doesn't linger
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
     function handleAuthentication() {
-        // In a redirect flow, the primary job is to check for a token in localStorage.
-        accessToken = localStorage.getItem('github_token');
+        // Check the URL hash for a token first.
+        checkUrlForToken();
+
+        // If we didn't get a token from the URL, check localStorage.
+        if (!accessToken) {
+            accessToken = localStorage.getItem('github_token');
+        }
 
         if (accessToken) {
-            // If we have a token, we are logged in.
             loadTinyMCE();
         }
 
@@ -95,10 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startAuthentication() {
-        // This function now starts the redirect flow.
         const redirectUri = `${window.location.origin}/callback.html`;
         const authUrl = `${AUTH_URL}?client_id=${OAUTH_CLIENT_ID}&scope=repo&redirect_uri=${encodeURIComponent(redirectUri)}`;
-        // Redirect the entire page to the auth URL.
         window.location.href = authUrl;
     }
 
@@ -106,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('github_token');
         accessToken = null;
         if (window.tinymce) tinymce.remove();
-        updateUI();
+        window.location.href = '/'; // Go back to login screen
     }
 
     // --- TINYMCE DYNAMIC LOADER ---
