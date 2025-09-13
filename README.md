@@ -8,24 +8,30 @@ This project provides the editor interface, while the actual website content and
 
 The configuration in this repository (`admin/config.yml`) is set up to read from and write to the `StrategyContent` repository.
 
-## Mobile-First Editor Configuration
+## Current Status (As of 2025-09-13)
 
-The goal of this project is to achieve a clean, "Google Docs-like" editing experience on mobile devices. The strategy is to use a simplified `config.yml` that defines a minimal set of fields (e.g., `title` and `body`) to avoid the cluttered UI that complex, nested fields create on small screens.
+The live editor is powered by the **standard `decap-cms` library**, which is loaded in the root `index.html` file. The primary goal is to improve the user experience of the standard editor, particularly on mobile devices.
 
-This approach leverages the power of the Decap CMS authentication and backend engine while providing a user interface that is simple and effective on any device.
+### Customizations
+- **Debug Panel:** The root `index.html` includes a custom "Decap Debug" panel. This is a floating panel at the bottom-left of the screen that provides debugging information and allows for simulating authentication messages. This is a valuable tool for development and should not be removed.
 
 ---
 
-## Developer Log & Learnings
+## Developer Log & Project History
 
-This section serves as a record of the development journey and key architectural decisions.
+This section serves as a record of the development journey and key architectural decisions. It is important to preserve this history to understand the context of the current implementation.
 
 *   **Initial Problem:** The core issue was the difficulty of using the default Decap CMS editor on a small mobile screen (iPhone). The UI was cluttered, making content editing nearly impossible.
 
-*   **Attempt #1: CSS Override:** The first approach was to use CSS to hide the non-essential UI elements of the Decap editor. This failed because the dynamically generated nature of the Decap React application made it impossible to find stable CSS selectors that worked reliably.
+*   **Historical Artifacts (⚠️ Do Not Delete):** In the process of trying to solve the mobile UI problem, several experimental solutions were developed. These are now considered historical artifacts and should not be deleted, as they contain valuable learnings.
+    *   **`editor.js` and `editor.css`:** These files represent an attempt to build a completely custom, standalone editor using TinyMCE and the GitHub API directly. This was a significant effort to create a bespoke editing experience from scratch.
+    *   **`admin/index.html` and `decap-cms-alter`:** This file represents an experiment with `decap-cms-alter`, a fork of the main Decap library, in an attempt to find a more mobile-friendly version of the editor.
 
-*   **Attempt #2: Architectural Pivot Discussion:** After the CSS approach failed, we considered abandoning Decap entirely to build a custom editor from scratch. This idea was rejected due to the known complexities of building a stable authentication flow from scratch, a problem Decap had already solved.
+*   **Current Strategy:** The current approach is to use the official `decap-cms` library and customize its appearance and behavior through configuration (`admin/config.yml`) and, where necessary, custom CSS. This provides a balance between stability and a tailored user experience.
 
-*   **Attempt #3: Simplify `config.yml`:** The key insight was that the UI's complexity was a direct result of the complexity in the `config.yml` file. Decap was simply building the "blueprint" it was given. The proposed solution was to **radically simplify the `config.yml`**. By defining a minimal collection with only a `title` and `body` (`markdown`) field, the Decap engine would be instructed to build a simple, clean UI.
+---
 
-*   **Current Strategy (2025-09-13): Combining `decap-cms-alter` with a Simple Config:** While the simplified configuration is key, the core `decap-cms` library still presents mobile rendering challenges. The current strategy combines the simplified config with a more mobile-friendly frontend engine. The `decap-cms` script has been replaced with `decap-cms-alter`, a drop-in replacement aimed at improving the mobile experience. This approach aims to get the best of both worlds: a simple content structure and a responsive editor UI.
+## Notes for AI Agents / Future Developers
+
+- **Image Handling:** AI agents working on this project may experience issues or "crashes" when processing images. This is a known limitation of the agent's environment and **not a bug** in the Decap CMS implementation.
+- **File Cleanup:** Do not delete historical artifacts like `editor.js`, `editor.css`, or `admin/index.html`. They are being preserved intentionally to document the project's history.
