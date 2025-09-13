@@ -45,6 +45,13 @@
 
 <!-- 🔹 3. Load Decap CMS (must come last) -->
 <script src="https://unpkg.com/decap-cms@3.8.3/dist/decap-cms.js" data-cfasync="false"></script>
+<!-- 🔹 4. Editor Shell (hidden until authenticated) -->
+<div id="editor-shell" style="display:none; padding:12px;">
+  <h2>Edit Content</h2>
+  <textarea id="editor" style="width:100%; min-height:60vh;">Loading...</textarea>
+  <button id="save-btn">Save</button>
+  <div id="editor-status" style="margin-top:8px; font-size:12px; opacity:0.7;"></div>
+</div>
 
 </body>
 </html>
