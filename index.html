@@ -52,6 +52,48 @@
   <button id="save-btn">Save</button>
   <div id="editor-status" style="margin-top:8px; font-size:12px; opacity:0.7;"></div>
 </div>
+<script>
+(function () {
+  const token = localStorage.getItem('decap-cms:githubToken');
+  if (!token) return; // No auth, keep Decap visible
+
+  // Hide Decap CMS UI if needed (optional)
+  const decapUI = document.querySelector('.nc-root'); // Decap's root element
+  if (decapUI) decapUI.style.display = 'none';
+
+  // Show editor shell
+  document.getElementById('editor-shell').style.display = 'block';
+
+  // Load TinyMCE
+  const script = document.createElement('script');
+  script.src = 'https://cdn.tiny.cloud/1/w01ntc48o7kxzwys5kxk0gibj7s4lysx998e1rdgb1tjhm6y/tinymce/8/tinymce.min.js';
+  script.referrerPolicy = 'origin';
+  script.crossOrigin = 'anonymous';
+  script.onload = () => {
+    tinymce.init({
+      selector: '#editor',
+      plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+      toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+      setup: (editor) => {
+        editor.on('init', () => {
+          document.getElementById('editor-status').textContent = 'Editor ready.';
+        });
+      }
+    });
+  };
+  document.body.appendChild(script);
+
+  // Optional: bind save button
+  document.getElementById('save-btn').addEventListener('click', () => {
+    const content = tinymce.activeEditor.getContent();
+    document.getElementById('editor-status').textContent = 'Saving...';
+    // You can add GitHub save logic here later
+    setTimeout(() => {
+      document.getElementById('editor-status').textContent = 'Saved (simulated).';
+    }, 1000);
+  });
+})();
+</script>
 
 </body>
 </html>
