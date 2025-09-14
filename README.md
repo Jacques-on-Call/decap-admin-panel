@@ -13,7 +13,7 @@ The configuration in this repository (`admin/config.yml`) is set up to read from
 The live editor is powered by the **standard `decap-cms` library**, which is loaded in the root `index.html` file. The primary goal is to improve the user experience of the standard editor, particularly on mobile devices.
 
 ### Customizations
-- **Debug Panel:** The root `index.html` includes a custom "Decap Debug" panel. This is a floating panel at the bottom-left of the screen that provides debugging information and allows for simulating authentication messages. This is a valuable tool for development and should not be removed.
+- **Debug Panel:** The root `index.html` previously included a custom "Decap Debug" panel for troubleshooting authentication. This was a valuable tool that has since been removed as it is no longer needed.
 
 ---
 
